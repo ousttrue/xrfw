@@ -16,6 +16,12 @@
             "problemMatcher": [],
         },
         {
+            "label": "configure(reconfigure)",
+            "type": "shell",
+            "command": "meson setup --reconfigure builddir --prefix ${workspaceFolder}/prefix",
+            "problemMatcher": [],
+        },
+        {
             "label": "build",
             "type": "shell",
             "command": "meson install -C builddir",

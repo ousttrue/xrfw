@@ -1,6 +1,8 @@
+plog_dep = dependency('plog')
+
 executable('xrfw_sample', [
     'main.cpp'
 ],
     install: true,
-    dependencies: xrfw_dep,
+    dependencies: [plog_dep, xrfw_dep],
 )

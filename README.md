@@ -1,5 +1,7 @@
 # xrfw
 
+`c++20`
+
 [OpenXR](https://www.khronos.org/openxr/) をラップして Windows と Android の初期化, MainLoop を共通化する小さいライブラリ。
 PC は `meson` で、 Android は gradle から使えるように `cmake` でビルドする。
 

@@ -6,5 +6,5 @@
 #define XRFW_API extern "C" __declspec(dllimport)
 #endif
 
-XRFW_API int glfwInit();
-XRFW_API void glfwTerminate();
+XRFW_API int xrfwInit();
+XRFW_API void xrfwTerminate();
