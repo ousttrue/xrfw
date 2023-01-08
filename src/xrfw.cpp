@@ -170,7 +170,7 @@ XRFW_API int xrfwCreateInstance(const char **extensionNames,
 
 XRFW_API void xrfwDestroyInstance() { xrDestroyInstance(g_instance); }
 
-XRFW_API void *xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
+XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
 
   XrGraphicsBindingOpenGLWin32KHR graphicsBindingGL = {
       .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,

@@ -1,3 +1,4 @@
+#include "openxr/openxr.h"
 #include <windows.h>
 #define XR_USE_GRAPHICS_API_OPENGL
 #include <openxr/openxr_platform.h>
@@ -12,28 +13,48 @@
 
 #include <gl/GL.h>
 #include <iomanip>
+#include <thread>
 #include <xrfw.h>
 
-int main(int argc, char **argv) {
+static void xrMainloop(XrSession session, bool *isClosed) {
 
-  const char *extensions[] = {
-      XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
+  XrFrameWaitInfo waitFrameInfo = {
+      .type = XR_TYPE_FRAME_WAIT_INFO,
+      .next = nullptr,
   };
 
-  if (!xrfwCreateInstance(extensions, 1)) {
-    return 1;
-  }
+  XrFrameState frameState = {
+      .type = XR_TYPE_FRAME_STATE,
+      .next = nullptr,
+  };
 
+  while (!*isClosed) {
+    auto result = xrWaitFrame(session, &waitFrameInfo, &frameState);
+    if (XR_FAILED(result)) {
+      return;
+    }
+  }
+}
+
+int main(int argc, char **argv) {
   // OpenGL context
   if (!glfwInit()) {
     return -1;
   }
 
   // Create a windowed mode window and its OpenGL context
-  auto window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+  auto window = glfwCreateWindow(640, 480, "Hello xrfw", nullptr, nullptr);
   if (!window) {
     glfwTerminate();
     return -2;
+  }
+
+  // require openxr graphics extension
+  const char *extensions[] = {
+      XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
+  };
+  if (!xrfwCreateInstance(extensions, 1)) {
+    return 1;
   }
 
   // Make the window's context current
@@ -43,17 +64,24 @@ int main(int argc, char **argv) {
   auto session = xrfwCreateOpenGLWin32Session(GetDC(glfwGetWin32Window(window)),
                                               glfwGetWGLContext(window));
   if (session) {
-    xrfwDestroyInstance();
-    return 2;
-  }
+    // separate XR mainloop
+    bool is_closed = false;
+    std::thread xrThread(xrMainloop, session, &is_closed);
 
-  // mainloop
-  while (false) {
-  }
+    // this is glfw mainloop
+    while (!glfwWindowShouldClose(window)) {
+      glfwPollEvents();
+      glClear(GL_COLOR_BUFFER_BIT);
+      glfwSwapBuffers(window);
+    }
 
-  xrfwDestroySession(session);
+    // cleanup
+    is_closed = true;
+    xrThread.join();
+    xrfwDestroySession(session);
+  }
 
   xrfwDestroyInstance();
-
+  glfwTerminate();
   return 0;
 }
