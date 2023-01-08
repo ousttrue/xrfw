@@ -8,33 +8,11 @@
 #define GLFW_EXPOSE_NATIVE_WGL
 #include <Glfw/glfw3native.h>
 
-#define PLOG_IMPORT
 #include <plog/Log.h>
 
+#include "oxrapp.h"
 #include <gl/GL.h>
-#include <iomanip>
-#include <thread>
 #include <xrfw.h>
-
-static void xrMainloop(XrSession session, bool *isClosed) {
-
-  XrFrameWaitInfo waitFrameInfo = {
-      .type = XR_TYPE_FRAME_WAIT_INFO,
-      .next = nullptr,
-  };
-
-  XrFrameState frameState = {
-      .type = XR_TYPE_FRAME_STATE,
-      .next = nullptr,
-  };
-
-  while (!*isClosed) {
-    auto result = xrWaitFrame(session, &waitFrameInfo, &frameState);
-    if (XR_FAILED(result)) {
-      return;
-    }
-  }
-}
 
 int main(int argc, char **argv) {
   // OpenGL context
@@ -53,7 +31,8 @@ int main(int argc, char **argv) {
   const char *extensions[] = {
       XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
   };
-  if (!xrfwCreateInstance(extensions, 1)) {
+  auto instance = xrfwCreateInstance(extensions, 1);
+  if (!instance) {
     return 1;
   }
 
@@ -63,24 +42,25 @@ int main(int argc, char **argv) {
 
   auto session = xrfwCreateOpenGLWin32Session(GetDC(glfwGetWin32Window(window)),
                                               glfwGetWGLContext(window));
-  if (session) {
-    // separate XR mainloop
-    bool is_closed = false;
-    std::thread xrThread(xrMainloop, session, &is_closed);
-
-    // this is glfw mainloop
-    while (!glfwWindowShouldClose(window)) {
-      glfwPollEvents();
-      glClear(GL_COLOR_BUFFER_BIT);
-      glfwSwapBuffers(window);
-    }
-
-    // cleanup
-    is_closed = true;
-    xrThread.join();
-    xrfwDestroySession(session);
+  if (!session) {
+    return 2;
+  }
+  OxrApp app(instance, session);
+  if (!app.Initialize()) {
+    return 3;
   }
 
+  // glfw mainloop
+  while (!glfwWindowShouldClose(window)) {
+    glfwPollEvents();
+    // glClear(GL_COLOR_BUFFER_BIT);
+    // glfwSwapBuffers(window);
+    if (!app.ProcessFrame()) {
+      break;
+    }
+  }
+
+  xrfwDestroySession(session);
   xrfwDestroyInstance();
   glfwTerminate();
   return 0;

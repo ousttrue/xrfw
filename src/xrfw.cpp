@@ -54,9 +54,12 @@ static const int MAX_NUM_LAYERS = 16;
 XrInstance g_instance = nullptr;
 XrSystemId g_systemId = {};
 XrSession g_session = nullptr;
+XrViewConfigurationProperties g_viewportConfig;
 
-XRFW_API int xrfwCreateInstance(const char **extensionNames,
-                                uint32_t extensionCount) {
+XRFW_API XrInstance xrfwGetInstance() { return g_instance; }
+
+XRFW_API XrInstance xrfwCreateInstance(const char **extensionNames,
+                                       uint32_t extensionCount) {
 
   static plog::ColorConsoleAppender<plog::MyFormatter> consoleAppender;
   plog::init(plog::debug, &consoleAppender);
@@ -84,7 +87,7 @@ XRFW_API int xrfwCreateInstance(const char **extensionNames,
   auto result = xrCreateInstance(&instanceCreateInfo, &g_instance);
   if (XR_FAILED(result)) {
     PLOG_FATAL << "xrCreateInstance:" << result;
-    return false;
+    return nullptr;
   }
 
   XrInstanceProperties instanceInfo{
@@ -94,7 +97,7 @@ XRFW_API int xrfwCreateInstance(const char **extensionNames,
   result = xrGetInstanceProperties(g_instance, &instanceInfo);
   if (XR_FAILED(result)) {
     PLOG_FATAL << "xrGetInstanceProperties:" << result;
-    return false;
+    return nullptr;
   }
   PLOG_INFO << "Runtime " << instanceInfo.runtimeName
             << ": Version : " << XR_VERSION_MAJOR(instanceInfo.runtimeVersion)
@@ -111,7 +114,7 @@ XRFW_API int xrfwCreateInstance(const char **extensionNames,
   result = xrGetSystem(g_instance, &systemGetInfo, &g_systemId);
   if (XR_FAILED(result)) {
     PLOG_FATAL << "xrGetSystem";
-    return false;
+    return nullptr;
   }
 
   XrSystemProperties systemProperties = {
@@ -120,7 +123,7 @@ XRFW_API int xrfwCreateInstance(const char **extensionNames,
   result = xrGetSystemProperties(g_instance, g_systemId, &systemProperties);
   if (XR_FAILED(result)) {
     PLOG_FATAL << "xrGetSystem";
-    return false;
+    return nullptr;
   }
   PLOG_INFO << "System Properties: Name=" << systemProperties.systemName
             << " VendorId=" << systemProperties.vendorId;
@@ -141,7 +144,7 @@ XRFW_API int xrfwCreateInstance(const char **extensionNames,
   if (MAX_NUM_LAYERS > systemProperties.graphicsProperties.maxLayerCount) {
     PLOG_FATAL << "systemProperties.graphicsProperties.maxLayerCount "
                << MAX_NUM_LAYERS;
-    return false;
+    return nullptr;
   }
 
   // graphics
@@ -152,7 +155,7 @@ XRFW_API int xrfwCreateInstance(const char **extensionNames,
       (PFN_xrVoidFunction *)(&pfnGetOpenGLGraphicsRequirementsKHR));
   if (XR_FAILED(result)) {
     PLOG_FATAL << "xrGetInstanceProcAddr: xrGetOpenGLGraphicsRequirementsKHR";
-    return false;
+    return nullptr;
   }
 
   XrGraphicsRequirementsOpenGLKHR graphicsRequirements = {
@@ -162,10 +165,10 @@ XRFW_API int xrfwCreateInstance(const char **extensionNames,
                                                &graphicsRequirements);
   if (XR_FAILED(result)) {
     PLOG_FATAL << "xrGetOpenGLGraphicsRequirementsKHR";
-    return false;
+    return nullptr;
   }
 
-  return true;
+  return g_instance;
 }
 
 XRFW_API void xrfwDestroyInstance() { xrDestroyInstance(g_instance); }
@@ -192,6 +195,109 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
     return nullptr;
   }
 
+  // App only supports the primary stereo view config.
+  const XrViewConfigurationType supportedViewConfigType =
+      XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+  // viewports
+  {
+    // Enumerate the viewport configurations.
+    uint32_t viewportConfigTypeCount = 0;
+    auto result = xrEnumerateViewConfigurations(g_instance, g_systemId, 0,
+                                                &viewportConfigTypeCount, NULL);
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << "xrEnumerateViewConfigurations: " << result;
+      return nullptr;
+    }
+
+    std::vector<XrViewConfigurationType> viewportConfigurationTypes(
+        viewportConfigTypeCount);
+    result = xrEnumerateViewConfigurations(
+        g_instance, g_systemId, viewportConfigTypeCount,
+        &viewportConfigTypeCount, viewportConfigurationTypes.data());
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << "xrEnumerateViewConfigurations: " << result;
+      return nullptr;
+    }
+
+    PLOG_INFO << "Available Viewport Configuration Types: "
+              << viewportConfigTypeCount;
+    for (uint32_t i = 0; i < viewportConfigTypeCount; i++) {
+      const XrViewConfigurationType viewportConfigType =
+          viewportConfigurationTypes[i];
+      XrViewConfigurationProperties viewportConfig{
+          .type = XR_TYPE_VIEW_CONFIGURATION_PROPERTIES,
+      };
+      result = xrGetViewConfigurationProperties(
+          g_instance, g_systemId, viewportConfigType, &viewportConfig);
+      if (XR_FAILED(result)) {
+        PLOG_FATAL << "xrGetViewConfigurationProperties: " << result;
+        return nullptr;
+      }
+      PLOG_INFO << "  [" << i << "]FovMutable="
+                << (viewportConfig.fovMutable ? "true" : "false")
+                << " ConfigurationType " << viewportConfig.viewConfigurationType
+                << (viewportConfigType == supportedViewConfigType ? " Selected"
+                                                                  : "");
+
+      uint32_t viewCount;
+      result = xrEnumerateViewConfigurationViews(
+          g_instance, g_systemId, viewportConfigType, 0, &viewCount, NULL);
+      if (XR_FAILED(result)) {
+        PLOG_FATAL << "xrEnumerateViewConfigurationViews: " << result;
+        return nullptr;
+      }
+      if (viewCount > 0) {
+        std::vector<XrViewConfigurationView> elements(
+            viewCount, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
+
+        result = xrEnumerateViewConfigurationViews(
+            g_instance, g_systemId, viewportConfigType, viewCount, &viewCount,
+            elements.data());
+        if (XR_FAILED(result)) {
+          PLOG_FATAL << "xrEnumerateViewConfigurationViews: " << result;
+          return nullptr;
+        }
+        // Log the view config info for each view type for debugging purposes.
+        for (uint32_t e = 0; e < viewCount; e++) {
+          const XrViewConfigurationView *element = &elements[e];
+
+          PLOG_INFO << "    [" << i << "]"
+                    << "Viewport [" << e << "]: Recommended Width="
+                    << element->recommendedImageRectWidth
+                    << " Height=" << element->recommendedImageRectHeight
+                    << " SampleCount = "
+                    << element->recommendedSwapchainSampleCount;
+
+          PLOG_INFO << "    [" << i << "]"
+                    << "Viewport [" << e
+                    << "]: Max Width=" << element->maxImageRectWidth
+                    << " Height=" << element->maxImageRectHeight
+                    << " SampleCount = " << element->maxSwapchainSampleCount;
+        }
+
+        // Cache the view config properties for the selected config type.
+        if (viewportConfigType == supportedViewConfigType) {
+          assert(viewCount == MAX_NUM_EYES);
+          // g_viewConfigurationView = elements;
+        }
+      } else {
+        PLOG_ERROR << "    [" << i << "]"
+                   << "Empty viewport configuration type: " << viewCount;
+      }
+    }
+  }
+
+  // Get the viewport configuration info for the chosen viewport configuration
+  // type.
+  g_viewportConfig.type = XR_TYPE_VIEW_CONFIGURATION_PROPERTIES;
+  result = xrGetViewConfigurationProperties(
+      g_instance, g_systemId, supportedViewConfigType, &g_viewportConfig);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrGetViewConfigurationProperties: " << result;
+    return nullptr;
+  }
+
+  assert(g_viewportConfig.viewConfigurationType == supportedViewConfigType);
   return g_session;
 }
 
