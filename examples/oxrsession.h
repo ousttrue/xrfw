@@ -7,6 +7,7 @@ class OxrSessionState {
 
   XrEventDataBuffer eventDataBuffer_ = {};
   XrSessionState sessionState_ = XR_SESSION_STATE_UNKNOWN;
+  bool sessionRunning_ = false;
 
 public:
   OxrSessionState(XrInstance instance, XrSession session);

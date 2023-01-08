@@ -33,7 +33,7 @@ bool OxrSessionState::PollEventsAndIsActive() {
     }
     }
   }
-  return sessionState_ == XR_SESSION_STATE_READY;
+  return sessionRunning_;
 }
 
 // Return event if one is available, otherwise return null.
@@ -89,6 +89,7 @@ void OxrSessionState::HandleSessionStateChangedEvent(
       throw std::runtime_error("[xrBeginSession]");
     }
     PLOG_INFO << "xrBeginSession";
+    sessionRunning_ = true;
     break;
   }
 
@@ -99,16 +100,19 @@ void OxrSessionState::HandleSessionStateChangedEvent(
       throw std::runtime_error("[xrEndSession]");
     }
     PLOG_INFO << "xrEndSession";
+    sessionRunning_ = false;
     break;
   }
 
   case XR_SESSION_STATE_EXITING: {
     // Do not attempt to restart because user closed this session.
+    sessionRunning_ = false;
     break;
   }
 
   case XR_SESSION_STATE_LOSS_PENDING: {
     // Poll for a new instance.
+    sessionRunning_ = false;
     break;
   }
 
