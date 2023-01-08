@@ -6,6 +6,7 @@ cpp_args = ['-DPLOG_IMPORT']
 executable('xrfw_sample', [
     'main.cpp',
     'oxrapp.cpp',
+    'oxrsession.cpp',
 ],
     install: true,
     cpp_args: cpp_args,

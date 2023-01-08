@@ -1,4 +1,5 @@
 #include "oxrapp.h"
+#include <stdexcept>
 #include <xrfw.h>
 
 #include <plog/Log.h>
@@ -59,7 +60,7 @@ bool OxrApp::Initialize() {
   return true;
 }
 
-bool OxrApp::ProcessFrame() {
+void OxrApp::ProcessFrame() {
   // frame
   XrFrameWaitInfo waitFrameInfo = {
       .type = XR_TYPE_FRAME_WAIT_INFO,
@@ -72,7 +73,7 @@ bool OxrApp::ProcessFrame() {
   auto result = xrWaitFrame(session_, &waitFrameInfo, &frameState);
   if (XR_FAILED(result)) {
     PLOG_FATAL << result;
-    return false;
+    throw std::runtime_error("xrWaitFrame");
   }
 
   XrFrameBeginInfo beginFrameDesc = {
@@ -82,7 +83,7 @@ bool OxrApp::ProcessFrame() {
   result = xrBeginFrame(session_, &beginFrameDesc);
   if (XR_FAILED(result)) {
     PLOG_FATAL << result;
-    return false;
+    throw std::runtime_error("xrBeginFrame");
   }
 
   // location
@@ -93,7 +94,7 @@ bool OxrApp::ProcessFrame() {
                          frameState.predictedDisplayTime, &loc);
   if (XR_FAILED(result)) {
     PLOG_FATAL << result;
-    return false;
+    throw std::runtime_error("xrLocateSpace");
   }
 
   XrPosef xfStageFromHead = loc.pose;
@@ -101,7 +102,7 @@ bool OxrApp::ProcessFrame() {
                          frameState.predictedDisplayTime, &loc);
   if (XR_FAILED(result)) {
     PLOG_FATAL << result;
-    return false;
+    throw std::runtime_error("xrLocateSpace");
   }
 
   // views
@@ -123,7 +124,7 @@ bool OxrApp::ProcessFrame() {
                          projections);
   if (XR_FAILED(result)) {
     PLOG_FATAL << result;
-    return false;
+    throw std::runtime_error("xrLocateViews");
   }
 
   XrPosef viewTransform[2];
@@ -213,8 +214,34 @@ bool OxrApp::ProcessFrame() {
   result = xrEndFrame(session_, &endFrameInfo);
   if (XR_FAILED(result)) {
     PLOG_FATAL << result;
-    return false;
+    throw std::runtime_error("xrEndFrame");
   }
+}
 
-  return true;
+void OxrApp::RenderFrame() {
+
+  // XrFrameWaitInfo frameWaitInfo{XR_TYPE_FRAME_WAIT_INFO};
+  // XrFrameState frameState{XR_TYPE_FRAME_STATE};
+  // CHECK_XRCMD(xrWaitFrame(session_, &frameWaitInfo, &frameState));
+
+  // XrFrameBeginInfo frameBeginInfo{XR_TYPE_FRAME_BEGIN_INFO};
+  // CHECK_XRCMD(xrBeginFrame(session_, &frameBeginInfo));
+
+  // std::vector<XrCompositionLayerBaseHeader *> layers;
+  // XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+  // std::vector<XrCompositionLayerProjectionView> projectionLayerViews;
+  // if (frameState.shouldRender == XR_TRUE) {
+  //   if (RenderLayer(frameState.predictedDisplayTime, projectionLayerViews,
+  //                   layer)) {
+  //     layers.push_back(
+  //         reinterpret_cast<XrCompositionLayerBaseHeader *>(&layer));
+  //   }
+  // }
+
+  // XrFrameEndInfo frameEndInfo{XR_TYPE_FRAME_END_INFO};
+  // frameEndInfo.displayTime = frameState.predictedDisplayTime;
+  // frameEndInfo.environmentBlendMode = m_options->Parsed.EnvironmentBlendMode;
+  // frameEndInfo.layerCount = (uint32_t)layers.size();
+  // frameEndInfo.layers = layers.data();
+  // CHECK_XRCMD(xrEndFrame(session_, &frameEndInfo));
 }

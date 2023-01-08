@@ -11,6 +11,7 @@
 #include <plog/Log.h>
 
 #include "oxrapp.h"
+#include "oxrsession.h"
 #include <gl/GL.h>
 #include <xrfw.h>
 
@@ -45,19 +46,27 @@ int main(int argc, char **argv) {
   if (!session) {
     return 2;
   }
-  OxrApp app(instance, session);
-  if (!app.Initialize()) {
+
+  OxrApp oxr(instance, session);
+  if (!oxr.Initialize()) {
     return 3;
   }
+
+  OxrSessionState sessionState(instance, session);
 
   // glfw mainloop
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
+
+    if (sessionState.PollEventsAndIsActive()) {
+      oxr.ProcessFrame();
+    } else {
+      // session is not active
+      Sleep(20);
+    }
+
     // glClear(GL_COLOR_BUFFER_BIT);
     // glfwSwapBuffers(window);
-    if (!app.ProcessFrame()) {
-      break;
-    }
   }
 
   xrfwDestroySession(session);

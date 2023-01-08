@@ -18,5 +18,8 @@ public:
   OxrApp(XrInstance instance, XrSession session);
   ~OxrApp();
   bool Initialize();
-  bool ProcessFrame();
+  void ProcessFrame();
+
+private:
+  void RenderFrame();
 };
