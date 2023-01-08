@@ -1,7 +1,8 @@
 #pragma once
 #include <openxr/openxr.h>
+#include <vector>
 
-class OxrApp {
+class OxrRenderer {
   XrInstance instance_ = nullptr;
   XrSession session_ = nullptr;
 
@@ -14,12 +15,12 @@ class OxrApp {
       {XR_TYPE_VIEW},
   };
 
-public:
-  OxrApp(XrInstance instance, XrSession session);
-  ~OxrApp();
-  bool Initialize();
-  void ProcessFrame();
+  std::vector<XrCompositionLayerBaseHeader *> layers;
 
-private:
+public:
+  OxrRenderer(XrInstance instance, XrSession session);
+  ~OxrRenderer();
+  bool Initialize();
+  // waitFrame, beginFrame, render and endFrame
   void RenderFrame();
 };

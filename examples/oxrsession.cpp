@@ -86,8 +86,9 @@ void OxrSessionState::HandleSessionStateChangedEvent(
     auto result = xrBeginSession(session_, &sessionBeginInfo);
     if (XR_FAILED(result)) {
       PLOG_FATAL << result;
-      throw std::runtime_error("xrBeginSession");
+      throw std::runtime_error("[xrBeginSession]");
     }
+    PLOG_INFO << "xrBeginSession";
     break;
   }
 
@@ -95,8 +96,9 @@ void OxrSessionState::HandleSessionStateChangedEvent(
     auto result = xrEndSession(session_);
     if (XR_FAILED(result)) {
       PLOG_FATAL << result;
-      throw std::runtime_error("xrEndSession");
+      throw std::runtime_error("[xrEndSession]");
     }
+    PLOG_INFO << "xrEndSession";
     break;
   }
 

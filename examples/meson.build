@@ -5,8 +5,8 @@ gl_dep = dependency('opengl')
 cpp_args = ['-DPLOG_IMPORT']
 executable('xrfw_sample', [
     'main.cpp',
-    'oxrapp.cpp',
     'oxrsession.cpp',
+    'oxrrenderer.cpp',
 ],
     install: true,
     cpp_args: cpp_args,
