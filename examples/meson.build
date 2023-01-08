@@ -1,9 +1,10 @@
-# plog_dep = dependency('plog')
-# openxr_loader_dep = dependency('openxr_loader_windows_prebuilt')
+glfw_dep = dependency('glfw3', 
+    default_options: ['install=true'])
+gl_dep = dependency('opengl')
 
 executable('xrfw_sample', [
     'main.cpp'
 ],
     install: true,
-    dependencies: [openxr_loader_dep, plog_dep, xrfw_dep],
+    dependencies: [openxr_loader_dep, plog_dep, xrfw_dep, glfw_dep, gl_dep],
 )
