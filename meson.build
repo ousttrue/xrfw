@@ -13,6 +13,10 @@ cpp_args = ['-DXRFW_BUILD']
 if compiler.get_id() == 'msvc'
     cpp_args += ['-D_CRT_SECURE_NO_WARNINGS']
 endif
+if host_machine.system() == 'windows'
+    cpp_args += ['-DXR_USE_PLATFORM_WIN32=1', '-DXR_USE_GRAPHICS_API_OPENGL=1']
+else
+endif
 
 xrfw_inc = include_directories('include')
 xrfw_lib = library('xrfw', [

@@ -1,54 +1,35 @@
-#include "plog/Severity.h"
+#include <windows.h>
+#define XR_USE_GRAPHICS_API_OPENGL
+#include <openxr/openxr_platform.h>
+
 #include <iomanip>
-#include <plog/Appenders/ColorConsoleAppender.h>
-#include <plog/Init.h>
-#include <plog/Log.h>
 #include <xrfw.h>
-
-namespace plog {
-class MyFormatter {
-public:
-  static util::nstring header() // This method returns a header for a new file.
-                                // In our case it is empty.
-  {
-    return util::nstring();
-  }
-
-  static util::nstring
-  format(const Record &record) // This method returns a string from a record.
-  {
-    tm t;
-    util::localtime_s(&t, &record.getTime().time);
-
-    util::nostringstream ss;
-    ss << "["
-       // hour
-       << std::setfill(PLOG_NSTR('0')) << std::setw(2) << t.tm_hour
-       << PLOG_NSTR(":")
-       // min
-       << std::setfill(PLOG_NSTR('0')) << std::setw(2) << t.tm_min
-       << PLOG_NSTR(".")
-       // sec
-       << std::setfill(PLOG_NSTR('0')) << std::setw(2) << t.tm_sec
-       << "]"
-       // message
-       << record.getFunc() << ": " << record.getMessage() << "\n";
-
-    return ss.str();
-  }
-};
-} // namespace plog
 
 int main(int argc, char **argv) {
 
-  static plog::ColorConsoleAppender<plog::MyFormatter> consoleAppender;
-  plog::init(plog::debug, &consoleAppender);
+  const char *extensions[] = {
+      XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
+  };
 
-  if (!xrfwInit()) {
+  if (!xrfwCreateInstance(extensions, 1)) {
     return 1;
   }
 
-  xrfwTerminate();
+  // OpenGL context
+
+  auto session = xrfwCreateOpenGLWin32Session(nullptr, nullptr);
+  if (session) {
+    xrfwDestroyInstance();
+    return 2;
+  }
+
+  // mainloop
+  while (false) {
+  }
+
+  xrfwDestroySession(session);
+
+  xrfwDestroyInstance();
 
   return 0;
 }
