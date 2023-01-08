@@ -23,4 +23,8 @@ public:
   bool Initialize();
   // waitFrame, beginFrame, render and endFrame
   void RenderFrame();
+
+private:
+  bool RenderLayer(XrTime predictedDisplayTime,
+                   XrCompositionLayerProjection &layer);
 };
