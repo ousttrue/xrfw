@@ -100,26 +100,31 @@ void OxrRenderer::RenderFrame() {
 
 bool OxrRenderer::RenderLayer(XrTime predictedDisplayTime,
                               XrCompositionLayerProjection &layer) {
-  // XrResult res;
 
-  // XrViewState viewState{XR_TYPE_VIEW_STATE};
-  // uint32_t viewCapacityInput = (uint32_t)m_views.size();
-  // uint32_t viewCountOutput;
+  XrViewState viewState{XR_TYPE_VIEW_STATE};
 
-  // XrViewLocateInfo viewLocateInfo{XR_TYPE_VIEW_LOCATE_INFO};
-  // viewLocateInfo.viewConfigurationType = m_options->Parsed.ViewConfigType;
-  // viewLocateInfo.displayTime = predictedDisplayTime;
-  // viewLocateInfo.space = m_appSpace;
+  XrViewLocateInfo viewLocateInfo{
+      .type = XR_TYPE_VIEW_LOCATE_INFO,
+      .viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+      .displayTime = predictedDisplayTime,
+      .space = currentSpace_,
+  };
 
-  // res = xrLocateViews(m_session, &viewLocateInfo, &viewState,
-  // viewCapacityInput,
-  //                     &viewCountOutput, m_views.data());
-  // CHECK_XRRESULT(res, "xrLocateViews");
-  // if ((viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) == 0 ||
-  //     (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) == 0)
-  //     {
-  //   return false; // There is no valid tracking poses for the views.
-  // }
+  XrView views[2]{
+      {XR_TYPE_VIEW},
+      {XR_TYPE_VIEW},
+  };
+  uint32_t viewCountOutput;
+  auto result = xrLocateViews(session_, &viewLocateInfo, &viewState, 2,
+                              &viewCountOutput, views);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrLocateViews: " << result;
+    return false;
+  }
+  if ((viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) == 0 ||
+      (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) == 0) {
+    return false; // There is no valid tracking poses for the views.
+  }
 
   // CHECK(viewCountOutput == viewCapacityInput);
   // CHECK(viewCountOutput == m_configViews.size());

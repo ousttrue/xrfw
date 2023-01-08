@@ -10,11 +10,6 @@ class OxrRenderer {
   XrSpace headSpace_ = {};
   XrSpace localSpace_ = {};
 
-  XrView projections[2]{
-      {XR_TYPE_VIEW},
-      {XR_TYPE_VIEW},
-  };
-
   std::vector<XrCompositionLayerBaseHeader *> layers;
 
 public:
