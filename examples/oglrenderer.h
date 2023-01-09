@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 #include <memory>
-#include <openxr/openxr.h>
+// #include <openxr/openxr.h>
 #include <stdint.h>
 #include <unordered_map>
 
@@ -15,8 +15,7 @@ class OglRenderer {
 public:
   OglRenderer();
   ~OglRenderer();
-  void RenderView(const XrSwapchainImageBaseHeader *swapchainImage, int x,
-                  int y, int width, int height);
+  void RenderView(uint32_t colorTexture, int x, int y, int width, int height);
 
 private:
   uint32_t GetDepthTexture(uint32_t colorTexture);

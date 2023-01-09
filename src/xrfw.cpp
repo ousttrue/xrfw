@@ -41,8 +41,11 @@ public:
 #define WINDOWS_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include <algorithm>
+#include <list>
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
+#include <vector>
 #include <xrfw.h>
 
 static const int CPU_LEVEL = 2;
@@ -350,6 +353,131 @@ XRFW_API XrBool32 xrfwGetViewConfigurationViews(
   }
 
   return XR_TRUE;
+}
+
+static int64_t SelectColorSwapchainFormat(XrSession session) {
+  // Select a swapchain format.
+  uint32_t swapchainFormatCount;
+  auto result =
+      xrEnumerateSwapchainFormats(session, 0, &swapchainFormatCount, nullptr);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    throw std::runtime_error("xrEnumerateSwapchainFormats");
+  }
+
+  // std::vector<int64_t> runtimeFormats;
+  std::vector<int64_t> swapchainFormats(swapchainFormatCount);
+  result = xrEnumerateSwapchainFormats(
+      session, (uint32_t)swapchainFormats.size(), &swapchainFormatCount,
+      swapchainFormats.data());
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    throw std::runtime_error("xrEnumerateSwapchainFormats");
+  }
+  assert(swapchainFormatCount == swapchainFormats.size());
+
+  // List of supported color swapchain formats.
+  constexpr int64_t SupportedColorSwapchainFormats[] = {
+      0x8059, // GL_RGB10_A2,
+      0x1908, // GL_RGBA16F,
+      // The two below should only be used as a fallback, as they are linear
+      // color formats without enough bits for color depth, thus leading to
+      // banding.
+      0x8058, // GL_RGBA8,
+      0x8F97, // GL_RGBA8_SNORM,
+  };
+
+  auto swapchainFormatIt =
+      std::find_first_of(swapchainFormats.begin(), swapchainFormats.end(),
+                         std::begin(SupportedColorSwapchainFormats),
+                         std::end(SupportedColorSwapchainFormats));
+  if (swapchainFormatIt == swapchainFormats.end()) {
+    throw std::runtime_error(
+        "No runtime swapchain format supported for color swapchain");
+  }
+  return *swapchainFormatIt;
+}
+
+std::list<std::vector<XrSwapchainImageOpenGLKHR>> m_swapchainImageBuffers;
+
+static std::vector<XrSwapchainImageBaseHeader *> AllocateSwapchainImageStructs(
+    uint32_t capacity, const XrSwapchainCreateInfo & /*swapchainCreateInfo*/) {
+  // Allocate and initialize the buffer of image structs (must be sequential in
+  // memory for xrEnumerateSwapchainImages). Return back an array of pointers to
+  // each swapchain image struct so the consumer doesn't need to know the
+  // type/size.
+  std::vector<XrSwapchainImageOpenGLKHR> swapchainImageBuffer(capacity);
+  std::vector<XrSwapchainImageBaseHeader *> swapchainImageBase;
+  for (XrSwapchainImageOpenGLKHR &image : swapchainImageBuffer) {
+    image.type = XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR;
+    swapchainImageBase.push_back(
+        reinterpret_cast<XrSwapchainImageBaseHeader *>(&image));
+  }
+
+  // Keep the buffer alive by moving it into the list of buffers.
+  m_swapchainImageBuffers.push_back(std::move(swapchainImageBuffer));
+
+  return swapchainImageBase;
+}
+
+XRFW_API XrSwapchain
+xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
+                    int *width, int *height) {
+  auto colorSwapchainFormat = SelectColorSwapchainFormat(g_session);
+
+  PLOG_INFO << "Creating swapchain for view "
+            << "with dimensions Width="
+            << viewConfigurationView.recommendedImageRectWidth
+            << " Height=" << viewConfigurationView.recommendedImageRectHeight
+            << " Format=" << colorSwapchainFormat << " SampleCount="
+            << viewConfigurationView.recommendedSwapchainSampleCount;
+
+  // Create the swapchain.
+  XrSwapchainCreateInfo swapchainCreateInfo{
+      .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
+      .next = nullptr,
+      .createFlags = 0,
+      .usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT |
+                    XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT,
+      .format = colorSwapchainFormat,
+      .sampleCount = viewConfigurationView.recommendedSwapchainSampleCount,
+      .width = viewConfigurationView.recommendedImageRectWidth,
+      .height = viewConfigurationView.recommendedImageRectHeight,
+      .faceCount = 1,
+      .arraySize = 1,
+      .mipCount = 1,
+  };
+
+  XrSwapchain swapchain;
+  auto result = xrCreateSwapchain(g_session, &swapchainCreateInfo, &swapchain);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    return {};
+  }
+
+  uint32_t imageCount;
+  result = xrEnumerateSwapchainImages(swapchain, 0, &imageCount, nullptr);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    return {};
+  }
+
+  // XXX This should really just return XrSwapchainImageBaseHeader*
+  auto swapchainImages =
+      AllocateSwapchainImageStructs(imageCount, swapchainCreateInfo);
+  result = xrEnumerateSwapchainImages(swapchain, imageCount, &imageCount,
+                                      swapchainImages[0]);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    return {};
+  }
+
+  //     m_swapchainImages.insert(
+  //         std::make_pair(swapchain.handle, std::move(swapchainImages)));
+
+  *width = swapchainCreateInfo.width;
+  *height = swapchainCreateInfo.height;
+  return swapchain;
 }
 
 // Return event if one is available, otherwise return null.

@@ -6,19 +6,10 @@ class OxrRenderer {
   XrInstance instance_ = nullptr;
   XrSession session_ = nullptr;
 
-  struct Swapchain {
-    XrSwapchain handle;
-    int32_t width;
-    int32_t height;
-  };
-  Swapchain swapchains_[2];
-
-  XrCompositionLayerProjectionView projectionLayerViews_[2];
-
 public:
   OxrRenderer(XrInstance instance, XrSession session);
   ~OxrRenderer();
-  bool CreateSwapchain(const XrViewConfigurationView &viewConfigurationView);
-  std::optional<XrCompositionLayerProjection>
-  RenderLayer(XrTime predictedDisplayTime, const XrView views[2]);
+  std::optional<XrCompositionLayerProjectionView>
+  RenderLayer(XrSwapchain swapchain, int width, int height,
+              XrTime predictedDisplayTime, const XrView &view);
 };

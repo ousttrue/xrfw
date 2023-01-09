@@ -1,3 +1,4 @@
+#include "oglrenderer.h"
 #include <windows.h>
 #define XR_USE_GRAPHICS_API_OPENGL
 #include <openxr/openxr_platform.h>
@@ -39,25 +40,34 @@ int main(int argc, char **argv) {
   glfwMakeContextCurrent(window);
   PLOG_INFO << glGetString(GL_VERSION);
 
+  // session from graphics
   auto session = xrfwCreateOpenGLWin32Session(GetDC(glfwGetWin32Window(window)),
                                               glfwGetWGLContext(window));
   if (!session) {
     return 2;
   }
 
+  // swapchain
   XrViewConfigurationView viewConfigurationViews[2];
-  if(!xrfwGetViewConfigurationViews(viewConfigurationViews, 2))
-  {
+  if (!xrfwGetViewConfigurationViews(viewConfigurationViews, 2)) {
     return 3;
+  }
+  int left_width, left_height;
+  auto left =
+      xrfwCreateSwapchain(viewConfigurationViews[0], &left_width, &left_height);
+  if (!left) {
+    return 4;
+  }
+  int right_width, right_height;
+  auto right = xrfwCreateSwapchain(viewConfigurationViews[1], &right_width,
+                                   &right_height);
+  if (!right) {
+    return 5;
   }
 
   OxrRenderer oxr(instance, session);
-  if (!oxr.CreateSwapchain(viewConfigurationViews[0])) {
-    return 4;
-  }
-  if (!oxr.CreateSwapchain(viewConfigurationViews[1])) {
-    return 5;
-  }
+
+  OglRenderer renderer;
 
   // glfw mainloop
   while (!glfwWindowShouldClose(window)) {
@@ -71,10 +81,27 @@ int main(int argc, char **argv) {
           {XR_TYPE_VIEW},
           {XR_TYPE_VIEW},
       };
+      XrCompositionLayerProjectionView projectionLayerViews[2];
+      XrCompositionLayerProjection projection{
+          .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
+          .next = nullptr,
+          .layerFlags = 0,
+          .space = {},
+          .viewCount = 2,
+          .views = projectionLayerViews,
+      };
       if (xrfwBeginFrame(&frameTime, views)) {
-        if (auto projection = oxr.RenderLayer(frameTime, views)) {
-          layer = &projection.value();
+        if (auto projectionView = oxr.RenderLayer(left, left_width, left_height,
+                                                  frameTime, views[0])) {
+          // renderer.RenderView(uint32_t colorTexture, int x, int y, int width,
+          // int height)
+          projectionLayerViews[0] = projectionView.value();
         }
+        if (auto projectionView = oxr.RenderLayer(
+                right, right_width, right_height, frameTime, views[1])) {
+          projectionLayerViews[1] = projectionView.value();
+        }
+        layer = &projection;
       }
       xrfwEndFrame(frameTime, layer);
 

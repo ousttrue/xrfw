@@ -20,7 +20,7 @@ OglRenderer::~OglRenderer()
   }
 }
 
-void OglRenderer::RenderView(const XrSwapchainImageBaseHeader *swapchainImage,
+void OglRenderer::RenderView(uint32_t colorTexture,
                              int x, int y, int width, int height) {
   // CHECK(layerView.subImage.imageArrayIndex ==
   //       0);                     // Texture arrays not supported.
@@ -28,9 +28,9 @@ void OglRenderer::RenderView(const XrSwapchainImageBaseHeader *swapchainImage,
 
   glBindFramebuffer(GL_FRAMEBUFFER, m_swapchainFramebuffer);
 
-  const uint32_t colorTexture =
-      reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
-          ->image;
+  // const uint32_t colorTexture =
+  //     reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
+  //         ->image;
 
   glViewport(static_cast<GLint>(x), static_cast<GLint>(y),
              static_cast<GLsizei>(width), static_cast<GLsizei>(height));
