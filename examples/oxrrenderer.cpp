@@ -9,8 +9,27 @@
 #include <unordered_map>
 #include <xrfw.h>
 
-static int64_t
-SelectColorSwapchainFormat(const std::vector<int64_t> &runtimeFormats) {
+static int64_t SelectColorSwapchainFormat(XrSession session) {
+  // Select a swapchain format.
+  uint32_t swapchainFormatCount;
+  auto result =
+      xrEnumerateSwapchainFormats(session, 0, &swapchainFormatCount, nullptr);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    throw std::runtime_error("xrEnumerateSwapchainFormats");
+  }
+
+  // std::vector<int64_t> runtimeFormats;
+  std::vector<int64_t> swapchainFormats(swapchainFormatCount);
+  result = xrEnumerateSwapchainFormats(
+      session, (uint32_t)swapchainFormats.size(), &swapchainFormatCount,
+      swapchainFormats.data());
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    throw std::runtime_error("xrEnumerateSwapchainFormats");
+  }
+  assert(swapchainFormatCount == swapchainFormats.size());
+
   // List of supported color swapchain formats.
   constexpr int64_t SupportedColorSwapchainFormats[] = {
       GL_RGB10_A2,
@@ -23,10 +42,10 @@ SelectColorSwapchainFormat(const std::vector<int64_t> &runtimeFormats) {
   };
 
   auto swapchainFormatIt =
-      std::find_first_of(runtimeFormats.begin(), runtimeFormats.end(),
+      std::find_first_of(swapchainFormats.begin(), swapchainFormats.end(),
                          std::begin(SupportedColorSwapchainFormats),
                          std::end(SupportedColorSwapchainFormats));
-  if (swapchainFormatIt == runtimeFormats.end()) {
+  if (swapchainFormatIt == swapchainFormats.end()) {
     throw std::runtime_error(
         "No runtime swapchain format supported for color swapchain");
   }
@@ -60,82 +79,38 @@ OxrRenderer::OxrRenderer(XrInstance instance, XrSession session)
 
 OxrRenderer::~OxrRenderer() {}
 
-// bool OxrRenderer::CreateSwapchains(int viewCount) {
+bool OxrRenderer::CreateSwapchain(const XrViewConfigurationView &vp) {
 
-//   // Select a swapchain format.
-//   uint32_t swapchainFormatCount;
-//   auto result =
-//       xrEnumerateSwapchainFormats(session_, 0, &swapchainFormatCount, nullptr);
-//   if (XR_FAILED(result)) {
-//     PLOG_FATAL << result;
-//     return false;
-//   }
+  auto colorSwapchainFormat = SelectColorSwapchainFormat(session_);
 
-//   std::vector<int64_t> swapchainFormats(swapchainFormatCount);
-//   result = xrEnumerateSwapchainFormats(
-//       session_, (uint32_t)swapchainFormats.size(), &swapchainFormatCount,
-//       swapchainFormats.data());
-//   if (XR_FAILED(result)) {
-//     PLOG_FATAL << result;
-//     return false;
-//   }
-//   assert(swapchainFormatCount == swapchainFormats.size());
+  PLOG_INFO << "Creating swapchain for view "
+            << "with dimensions Width=" << vp.recommendedImageRectWidth
+            << " Height=" << vp.recommendedImageRectHeight
+            << " Format=" << colorSwapchainFormat
+            << " SampleCount=" << vp.recommendedSwapchainSampleCount;
 
-//   auto colorSwapchainFormat = SelectColorSwapchainFormat(swapchainFormats);
+  // Create the swapchain.
+  XrSwapchainCreateInfo swapchainCreateInfo{
+      .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
+      .next = nullptr,
+      .createFlags = 0,
+      .usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT |
+                    XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT,
+      .format = colorSwapchainFormat,
+      .sampleCount = vp.recommendedSwapchainSampleCount,
+      .width = vp.recommendedImageRectWidth,
+      .height = vp.recommendedImageRectHeight,
+      .faceCount = 1,
+      .arraySize = 1,
+      .mipCount = 1,
+  };
 
-//   // Print swapchain formats and the selected one.
-//   {
-//     std::string swapchainFormatsString;
-//     for (int64_t format : swapchainFormats) {
-//       const bool selected = format == colorSwapchainFormat;
-//       swapchainFormatsString += " ";
-//       if (selected) {
-//         swapchainFormatsString += "[";
-//       }
-//       swapchainFormatsString += ToGLString(format);
-//       if (selected) {
-//         swapchainFormatsString += "]";
-//       }
-//     }
-//     PLOG_DEBUG << "Swapchain Formats: " << swapchainFormatsString;
-//   }
-
-//   // Create a swapchain for each view.
-//   for (uint32_t i = 0; i < viewCount; i++) {
-//   }
-// }
-
-bool OxrRenderer::CreateSwapchain(
-    const XrViewConfigurationView &viewConfigurationView) {
-
-  //     const XrViewConfigurationView &vp = m_configViews[i];
-  //     Log::Write(Log::Level::Info,
-  //                Fmt("Creating swapchain for view %d with dimensions
-  //                Width=%d
-  //                "
-  //                    "Height=%d SampleCount=%d",
-  //                    i, vp.recommendedImageRectWidth,
-  //                    vp.recommendedImageRectHeight,
-  //                    vp.recommendedSwapchainSampleCount));
-
-  //     // Create the swapchain.
-  //     XrSwapchainCreateInfo
-  //     swapchainCreateInfo{XR_TYPE_SWAPCHAIN_CREATE_INFO};
-  //     swapchainCreateInfo.arraySize = 1;
-  //     swapchainCreateInfo.format = m_colorSwapchainFormat;
-  //     swapchainCreateInfo.width = vp.recommendedImageRectWidth;
-  //     swapchainCreateInfo.height = vp.recommendedImageRectHeight;
-  //     swapchainCreateInfo.mipCount = 1;
-  //     swapchainCreateInfo.faceCount = 1;
-  //     swapchainCreateInfo.sampleCount =
-  //         m_graphicsPlugin->GetSupportedSwapchainSampleCount(vp);
-  //     swapchainCreateInfo.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT |
-  //                                      XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-  //     Swapchain swapchain;
-  //     swapchain.width = swapchainCreateInfo.width;
-  //     swapchain.height = swapchainCreateInfo.height;
-  //     CHECK_XRCMD(xrCreateSwapchain(m_session, &swapchainCreateInfo,
-  //                                   &swapchain.handle));
+  XrSwapchain swapchain;
+  auto result = xrCreateSwapchain(session_, &swapchainCreateInfo, &swapchain);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    return false;
+  }
 
   //     m_swapchains.push_back(swapchain);
 
