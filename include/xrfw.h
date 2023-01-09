@@ -27,6 +27,9 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC);
 
 XRFW_API void xrfwDestroySession(void *session);
 
+XRFW_API int xrfwPollEventsAndIsActive();
+
+//
 #include <iosfwd>
 inline std::ostream &operator<<(std::ostream &os, XrResult value) {
   char buffer[XR_MAX_RESULT_STRING_SIZE];

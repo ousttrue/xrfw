@@ -55,6 +55,9 @@ XrInstance g_instance = nullptr;
 XrSystemId g_systemId = {};
 XrSession g_session = nullptr;
 XrViewConfigurationProperties g_viewportConfig;
+XrEventDataBuffer g_eventDataBuffer = {};
+XrSessionState g_sessionState = XR_SESSION_STATE_UNKNOWN;
+bool g_sessionRunning = false;
 
 XRFW_API XrInstance xrfwGetInstance() { return g_instance; }
 
@@ -304,4 +307,117 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
 XRFW_API void xrfwDestroySession(void *session) {
   assert(session == g_session);
   xrDestroySession((XrSession)session);
+}
+
+// Return event if one is available, otherwise return null.
+static const XrEventDataBaseHeader *TryReadNextEvent() {
+  // It is sufficient to clear the just the XrEventDataBuffer header to
+  // XR_TYPE_EVENT_DATA_BUFFER
+  auto baseHeader =
+      reinterpret_cast<XrEventDataBaseHeader *>(&g_eventDataBuffer);
+  *baseHeader = {XR_TYPE_EVENT_DATA_BUFFER};
+  auto result = xrPollEvent(g_instance, &g_eventDataBuffer);
+  if (result == XR_SUCCESS) {
+    if (baseHeader->type == XR_TYPE_EVENT_DATA_EVENTS_LOST) {
+      const XrEventDataEventsLost *const eventsLost =
+          reinterpret_cast<const XrEventDataEventsLost *>(baseHeader);
+      PLOG_WARNING << eventsLost << " events lost";
+    }
+
+    return baseHeader;
+  }
+  if (result == XR_EVENT_UNAVAILABLE) {
+    return nullptr;
+  }
+  PLOG_FATAL << result;
+  throw std::runtime_error("xrPollEvent");
+}
+
+static void HandleSessionStateChangedEvent(
+    const XrEventDataSessionStateChanged &stateChangedEvent) {
+  auto oldState = g_sessionState;
+  g_sessionState = stateChangedEvent.state;
+  PLOG_INFO << oldState << " => " << g_sessionState
+      // << " session=" << stateChangedEvent.session
+      // << " time=" << stateChangedEvent.time
+      ;
+
+  if ((stateChangedEvent.session != XR_NULL_HANDLE) &&
+      (stateChangedEvent.session != g_session)) {
+    throw std::runtime_error(
+        "XrEventDataSessionStateChanged for unknown session");
+  }
+
+  switch (g_sessionState) {
+
+  case XR_SESSION_STATE_READY: {
+    XrSessionBeginInfo sessionBeginInfo{
+        .type = XR_TYPE_SESSION_BEGIN_INFO,
+        .primaryViewConfigurationType =
+            XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+    };
+    auto result = xrBeginSession(g_session, &sessionBeginInfo);
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << result;
+      throw std::runtime_error("[xrBeginSession]");
+    }
+    PLOG_INFO << "xrBeginSession";
+    g_sessionRunning = true;
+    break;
+  }
+
+  case XR_SESSION_STATE_STOPPING: {
+    auto result = xrEndSession(g_session);
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << result;
+      throw std::runtime_error("[xrEndSession]");
+    }
+    PLOG_INFO << "xrEndSession";
+    g_sessionRunning = false;
+    break;
+  }
+
+  case XR_SESSION_STATE_EXITING: {
+    // Do not attempt to restart because user closed this session.
+    g_sessionRunning = false;
+    break;
+  }
+
+  case XR_SESSION_STATE_LOSS_PENDING: {
+    // Poll for a new instance.
+    g_sessionRunning = false;
+    break;
+  }
+
+  default:
+    break;
+  }
+}
+
+XRFW_API int xrfwPollEventsAndIsActive() {
+  // Process all pending messages.
+  while (const XrEventDataBaseHeader *event = TryReadNextEvent()) {
+    switch (event->type) {
+    case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: {
+      const auto &instanceLossPending =
+          *reinterpret_cast<const XrEventDataInstanceLossPending *>(event);
+      PLOG_WARNING << "XrEventDataInstanceLossPending by "
+                   << instanceLossPending.lossTime;
+      break;
+    }
+
+    case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
+      auto sessionStateChangedEvent =
+          *reinterpret_cast<const XrEventDataSessionStateChanged *>(event);
+      HandleSessionStateChangedEvent(sessionStateChangedEvent);
+      break;
+    }
+
+    default: {
+      PLOG_INFO << "unknown event type " << event->type;
+      break;
+    }
+    }
+  }
+  return g_sessionRunning;
 }

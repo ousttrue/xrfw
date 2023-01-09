@@ -9,7 +9,6 @@
 
 #include <plog/Log.h>
 
-#include "oxrsession.h"
 #include "oxrrenderer.h"
 #include <gl/GL.h>
 #include <xrfw.h>
@@ -46,7 +45,7 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  OxrSessionState sessionState(instance, session);
+  // OxrSessionState sessionState(instance, session);
 
   OxrRenderer oxr(instance, session);
   if (!oxr.Initialize()) {
@@ -57,7 +56,7 @@ int main(int argc, char **argv) {
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
-    if (sessionState.PollEventsAndIsActive()) {
+    if(xrfwPollEventsAndIsActive()) {
       oxr.RenderFrame();
     } else {
       // session is not active
