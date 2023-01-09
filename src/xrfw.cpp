@@ -45,13 +45,10 @@ public:
 #include <list>
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
+#include <unordered_map>
 #include <vector>
 #include <xrfw.h>
 
-static const int CPU_LEVEL = 2;
-static const int GPU_LEVEL = 3;
-static const int NUM_MULTI_SAMPLES = 4;
-static const int MAX_NUM_EYES = 2;
 static const int MAX_NUM_LAYERS = 16;
 // App only supports the primary stereo view config.
 static const XrViewConfigurationType g_supportedViewConfigType =
@@ -60,13 +57,16 @@ static const XrViewConfigurationType g_supportedViewConfigType =
 XrInstance g_instance = nullptr;
 XrSystemId g_systemId = {};
 XrSession g_session = nullptr;
-// XrViewConfigurationProperties g_viewportConfig;
 XrEventDataBuffer g_eventDataBuffer = {};
 XrSessionState g_sessionState = XR_SESSION_STATE_UNKNOWN;
 bool g_sessionRunning = false;
 XrSpace g_currentSpace = {};
 XrSpace g_headSpace = {};
 XrSpace g_localSpace = {};
+
+std::list<std::vector<XrSwapchainImageOpenGLKHR>> g_swapchainImageBuffers;
+std::unordered_map<XrSwapchain, std::vector<XrSwapchainImageBaseHeader *>>
+    g_swapchainImages;
 
 XRFW_API XrInstance xrfwGetInstance() { return g_instance; }
 
@@ -398,8 +398,6 @@ static int64_t SelectColorSwapchainFormat(XrSession session) {
   return *swapchainFormatIt;
 }
 
-std::list<std::vector<XrSwapchainImageOpenGLKHR>> m_swapchainImageBuffers;
-
 static std::vector<XrSwapchainImageBaseHeader *> AllocateSwapchainImageStructs(
     uint32_t capacity, const XrSwapchainCreateInfo & /*swapchainCreateInfo*/) {
   // Allocate and initialize the buffer of image structs (must be sequential in
@@ -415,7 +413,7 @@ static std::vector<XrSwapchainImageBaseHeader *> AllocateSwapchainImageStructs(
   }
 
   // Keep the buffer alive by moving it into the list of buffers.
-  m_swapchainImageBuffers.push_back(std::move(swapchainImageBuffer));
+  g_swapchainImageBuffers.push_back(std::move(swapchainImageBuffer));
 
   return swapchainImageBase;
 }
@@ -472,12 +470,44 @@ xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
     return {};
   }
 
-  //     m_swapchainImages.insert(
-  //         std::make_pair(swapchain.handle, std::move(swapchainImages)));
+  g_swapchainImages.insert(
+      std::make_pair(swapchain, std::move(swapchainImages)));
 
   *width = swapchainCreateInfo.width;
   *height = swapchainCreateInfo.height;
   return swapchain;
+}
+
+XRFW_API const XrSwapchainImageBaseHeader *
+xrfwAcquireSwapchain(XrSwapchain swapchain) {
+  XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+  uint32_t swapchainImageIndex;
+  auto result =
+      xrAcquireSwapchainImage(swapchain, &acquireInfo, &swapchainImageIndex);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrAcquireSwapchainImage: " << result;
+    return {};
+  }
+
+  XrSwapchainImageWaitInfo waitInfo{
+      .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
+      .timeout = XR_INFINITE_DURATION,
+  };
+  result = xrWaitSwapchainImage(swapchain, &waitInfo);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrWaitSwapchainImage: " << result;
+    return {};
+  }
+
+  return g_swapchainImages[swapchain][swapchainImageIndex];
+}
+
+XRFW_API void xrfwReleaseSwapchain(XrSwapchain swapchain) {
+  XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+  auto result = xrReleaseSwapchainImage(swapchain, &releaseInfo);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrReleaseSwapchainImage: " << result;
+  }
 }
 
 // Return event if one is available, otherwise return null.

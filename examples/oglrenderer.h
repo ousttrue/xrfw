@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 #include <memory>
-// #include <openxr/openxr.h>
+#include <openxr/openxr.h>
 #include <stdint.h>
 #include <unordered_map>
 
@@ -15,7 +15,8 @@ class OglRenderer {
 public:
   OglRenderer();
   ~OglRenderer();
-  void RenderView(uint32_t colorTexture, int x, int y, int width, int height);
+  void RenderView(uint32_t colorTexture, int width, int height,
+                  XrTime predictedDisplayTime, const XrView &view);
 
 private:
   uint32_t GetDepthTexture(uint32_t colorTexture);

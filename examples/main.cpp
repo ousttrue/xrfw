@@ -1,3 +1,5 @@
+#include <gl/glew.h>
+
 #include "oglrenderer.h"
 #include <windows.h>
 #define XR_USE_GRAPHICS_API_OPENGL
@@ -9,9 +11,6 @@
 #include <Glfw/glfw3native.h>
 
 #include <plog/Log.h>
-
-#include "oxrrenderer.h"
-#include <gl/GL.h>
 #include <xrfw.h>
 
 int main(int argc, char **argv) {
@@ -26,6 +25,10 @@ int main(int argc, char **argv) {
     glfwTerminate();
     return -2;
   }
+  // Make the window's context current
+  glfwMakeContextCurrent(window);
+  PLOG_INFO << glGetString(GL_VERSION);
+  glewInit();
 
   // require openxr graphics extension
   const char *extensions[] = {
@@ -35,10 +38,6 @@ int main(int argc, char **argv) {
   if (!instance) {
     return 1;
   }
-
-  // Make the window's context current
-  glfwMakeContextCurrent(window);
-  PLOG_INFO << glGetString(GL_VERSION);
 
   // session from graphics
   auto session = xrfwCreateOpenGLWin32Session(GetDC(glfwGetWin32Window(window)),
@@ -65,8 +64,6 @@ int main(int argc, char **argv) {
     return 5;
   }
 
-  OxrRenderer oxr(instance, session);
-
   OglRenderer renderer;
 
   // glfw mainloop
@@ -81,7 +78,7 @@ int main(int argc, char **argv) {
           {XR_TYPE_VIEW},
           {XR_TYPE_VIEW},
       };
-      XrCompositionLayerProjectionView projectionLayerViews[2];
+      XrCompositionLayerProjectionView projectionLayerViews[2] = {};
       XrCompositionLayerProjection projection{
           .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
           .next = nullptr,
@@ -91,16 +88,57 @@ int main(int argc, char **argv) {
           .views = projectionLayerViews,
       };
       if (xrfwBeginFrame(&frameTime, views)) {
-        if (auto projectionView = oxr.RenderLayer(left, left_width, left_height,
-                                                  frameTime, views[0])) {
-          // renderer.RenderView(uint32_t colorTexture, int x, int y, int width,
-          // int height)
-          projectionLayerViews[0] = projectionView.value();
+        projectionLayerViews[0] = {
+            .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+            .pose = views[0].pose,
+            .fov = views[0].fov,
+            .subImage =
+                {
+                    .swapchain = left,
+                    .imageRect =
+                        {
+                            .offset = {0, 0},
+                            .extent = {left_width, left_height},
+                        },
+                },
+        };
+        projectionLayerViews[1] = {
+            .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+            .pose = views[1].pose,
+            .fov = views[1].fov,
+            .subImage =
+                {
+                    .swapchain = right,
+                    .imageRect =
+                        {
+                            .offset = {0, 0},
+                            .extent = {right_width, right_height},
+                        },
+                },
+        };
+        // left
+        if (auto swapchainImage = xrfwAcquireSwapchain(left)) {
+          const uint32_t colorTexture =
+              reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(
+                  swapchainImage)
+                  ->image;
+          // render
+          renderer.RenderView(colorTexture, left_width, left_height, frameTime,
+                              views[0]);
+          xrfwReleaseSwapchain(left);
         }
-        if (auto projectionView = oxr.RenderLayer(
-                right, right_width, right_height, frameTime, views[1])) {
-          projectionLayerViews[1] = projectionView.value();
+        // right
+        if (auto swapchainImage = xrfwAcquireSwapchain(right)) {
+          const uint32_t colorTexture =
+              reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(
+                  swapchainImage)
+                  ->image;
+          // render
+          renderer.RenderView(colorTexture, right_width, right_height,
+                              frameTime, views[1]);
+          xrfwReleaseSwapchain(right);
         }
+
         layer = &projection;
       }
       xrfwEndFrame(frameTime, layer);

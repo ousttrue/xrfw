@@ -3,13 +3,37 @@
 #include <Windows.h>
 
 #include <gl/glew.h>
+#include <iomanip>
 #include <memory>
 #include <openxr/openxr_platform.h>
+#include <plog/Log.h>
+#include <string_view>
+
+std::unordered_map<uint64_t, const char *> g_glNameMap{
+    {GL_RGBA8, "GL_RGBA8"},
+    {GL_RGB16F, "GL_RGB16F"},
+    {GL_R11F_G11F_B10F_EXT, "GL_R11F_G11F_B10F_EXT"},
+    {GL_SRGB8_ALPHA8_EXT, "GL_SRGB8_ALPHA8_EXT"},
+    {GL_DEPTH_COMPONENT16, "GL_DEPTH_COMPONENT16"},
+    {GL_DEPTH_COMPONENT24, "GL_DEPTH_COMPONENT24"},
+    {GL_DEPTH_COMPONENT32, "GL_DEPTH_COMPONENT32"},
+    {GL_DEPTH24_STENCIL8, "GL_DEPTH24_STENCIL8"},
+    {GL_DEPTH_COMPONENT32F, "GL_DEPTH_COMPONENT32F"},
+    {GL_DEPTH32F_STENCIL8, "GL_DEPTH32F_STENCIL8"},
+};
+
+static std::string_view ToGLString(uint64_t value) {
+  auto found = g_glNameMap.find(value);
+  if (found != g_glNameMap.end()) {
+    return found->second;
+  }
+  PLOG_FATAL << "0x" << std::hex << value;
+  throw std::runtime_error("unknown");
+}
 
 OglRenderer::OglRenderer() { glGenFramebuffers(1, &m_swapchainFramebuffer); }
 
-OglRenderer::~OglRenderer()
-{
+OglRenderer::~OglRenderer() {
   if (m_swapchainFramebuffer != 0) {
     glDeleteFramebuffers(1, &m_swapchainFramebuffer);
   }
@@ -20,20 +44,15 @@ OglRenderer::~OglRenderer()
   }
 }
 
-void OglRenderer::RenderView(uint32_t colorTexture,
-                             int x, int y, int width, int height) {
+void OglRenderer::RenderView(uint32_t colorTexture, int width, int height,
+                             XrTime predictedDisplayTime, const XrView &view) {
   // CHECK(layerView.subImage.imageArrayIndex ==
   //       0);                     // Texture arrays not supported.
   // UNUSED_PARM(swapchainFormat); // Not used in this function for now.
 
   glBindFramebuffer(GL_FRAMEBUFFER, m_swapchainFramebuffer);
 
-  // const uint32_t colorTexture =
-  //     reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
-  //         ->image;
-
-  glViewport(static_cast<GLint>(x), static_cast<GLint>(y),
-             static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+  glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
 
   glFrontFace(GL_CW);
   glCullFace(GL_BACK);
