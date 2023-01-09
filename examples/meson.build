@@ -14,6 +14,7 @@ executable('xrfw_sample', [
     'oxrsession.cpp',
     'oxrrenderer.cpp',
     'oglrenderer.cpp',
+    'ogldrawable.cpp',
 ],
     install: true,
     cpp_args: cpp_args,
