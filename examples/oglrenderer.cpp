@@ -1,5 +1,4 @@
 #include "oglrenderer.h"
-#include "ogldrawable.h"
 #include <Windows.h>
 
 #include <gl/glew.h>
@@ -44,8 +43,7 @@ OglRenderer::~OglRenderer() {
   }
 }
 
-void OglRenderer::RenderView(uint32_t colorTexture, int width, int height,
-                             XrTime predictedDisplayTime, const XrView &view) {
+void OglRenderer::BeginFbo(uint32_t colorTexture, int width, int height) {
   // CHECK(layerView.subImage.imageArrayIndex ==
   //       0);                     // Texture arrays not supported.
   // UNUSED_PARM(swapchainFormat); // Not used in this function for now.
@@ -71,12 +69,9 @@ void OglRenderer::RenderView(uint32_t colorTexture, int width, int height,
                m_clearColor[3]);
   glClearDepth(1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-  if (!m_drawable) {
-    m_drawable = OglDrawable::Create();
-  }
-  m_drawable->Render();
 }
+
+void OglRenderer::EndFbo() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
 
 uint32_t OglRenderer::GetDepthTexture(uint32_t colorTexture) {
   // If a depth-stencil view has already been created for this back-buffer, use
@@ -109,3 +104,5 @@ uint32_t OglRenderer::GetDepthTexture(uint32_t colorTexture) {
 
   return depthTexture;
 }
+
+void OglInitialize() { glewInit(); }

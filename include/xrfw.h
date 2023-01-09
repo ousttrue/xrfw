@@ -34,7 +34,7 @@ xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView, int *w
 XRFW_API const XrSwapchainImageBaseHeader* xrfwAcquireSwapchain(int i, XrSwapchain swapchain, int width, int height);
 XRFW_API void xrfwReleaseSwapchain(XrSwapchain swapchain);
 
-XRFW_API XrBool32 xrfwPollEventsAndIsActive();
+XRFW_API XrBool32 xrfwPollEventsIsSessionActive();
 XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrView views[2]);
 XRFW_API XrBool32 xrfwEndFrame();
 

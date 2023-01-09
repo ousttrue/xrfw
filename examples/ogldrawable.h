@@ -1,6 +1,13 @@
 #pragma once
 #include <memory>
+#include <openxr/openxr.h>
+#include <span>
 #include <stdint.h>
+
+struct Cube {
+    XrPosef Pose;
+    XrVector3f Scale;
+};
 
 class OglDrawable {
   uint32_t m_program{0};
@@ -12,12 +19,12 @@ class OglDrawable {
   uint32_t m_cubeIndexBuffer{0};
 
   OglDrawable();
+  bool Load();
 
 public:
   ~OglDrawable();
   OglDrawable(const OglDrawable &) = delete;
   OglDrawable &operator=(const OglDrawable &) = delete;
   static std::shared_ptr<OglDrawable> Create();
-  bool Load();
-  void Render();
+  void Render(const XrView &view, std::span<Cube> cubes);
 };

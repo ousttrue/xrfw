@@ -607,7 +607,7 @@ static void HandleSessionStateChangedEvent(
   }
 }
 
-XRFW_API XrBool32 xrfwPollEventsAndIsActive() {
+XRFW_API XrBool32 xrfwPollEventsIsSessionActive() {
   // Process all pending messages.
   while (const XrEventDataBaseHeader *event = TryReadNextEvent()) {
     switch (event->type) {

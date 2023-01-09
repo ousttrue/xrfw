@@ -1,6 +1,8 @@
 #include "ogldrawable.h"
 #include "geometry.h"
+#include "xr_linear.h"
 #include <gl/glew.h>
+#include <stdlib.h>
 
 static const char *VertexShaderGlsl = R"_(
     #version 410
@@ -46,47 +48,45 @@ OglDrawable::~OglDrawable() {
   }
 }
 
-void OglDrawable::Render() {
+void OglDrawable::Render(const XrView &layerView, std::span<Cube> cubes) {
   // Set shaders and uniform variables.
   glUseProgram(m_program);
 
-  //   const auto &pose = layerView.pose;
-  //   XrMatrix4x4f proj;
-  //   XrMatrix4x4f_CreateProjectionFov(&proj, GRAPHICS_OPENGL, layerView.fov,
-  //   0.05f,
-  //                                    100.0f);
-  //   XrMatrix4x4f toView;
-  //   XrVector3f scale{1.f, 1.f, 1.f};
-  //   XrMatrix4x4f_CreateTranslationRotationScale(&toView, &pose.position,
-  //                                               &pose.orientation, &scale);
-  //   XrMatrix4x4f view;
-  //   XrMatrix4x4f_InvertRigidBody(&view, &toView);
-  //   XrMatrix4x4f vp;
-  //   XrMatrix4x4f_Multiply(&vp, &proj, &view);
+  const auto &pose = layerView.pose;
+  XrMatrix4x4f proj;
+  XrMatrix4x4f_CreateProjectionFov(&proj, GRAPHICS_OPENGL, layerView.fov, 0.05f,
+                                   100.0f);
+  XrMatrix4x4f toView;
+  XrVector3f scale{1.f, 1.f, 1.f};
+  XrMatrix4x4f_CreateTranslationRotationScale(&toView, &pose.position,
+                                              &pose.orientation, &scale);
+  XrMatrix4x4f view;
+  XrMatrix4x4f_InvertRigidBody(&view, &toView);
+  XrMatrix4x4f vp;
+  XrMatrix4x4f_Multiply(&vp, &proj, &view);
 
-  //   // Set cube primitive data.
-  //   glBindVertexArray(m_vao);
+  // Set cube primitive data.
+  glBindVertexArray(m_vao);
 
-  //   // Render each cube
-  //   for (const Cube &cube : cubes) {
-  //     // Compute the model-view-projection transform and set it..
-  //     XrMatrix4x4f model;
-  //     XrMatrix4x4f_CreateTranslationRotationScale(
-  //         &model, &cube.Pose.position, &cube.Pose.orientation, &cube.Scale);
-  //     XrMatrix4x4f mvp;
-  //     XrMatrix4x4f_Multiply(&mvp, &vp, &model);
-  //     glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE,
-  //                        reinterpret_cast<const GLfloat *>(&mvp));
+  // Render each cube
+  for (const Cube &cube : cubes) {
+    // Compute the model-view-projection transform and set it..
+    XrMatrix4x4f model;
+    XrMatrix4x4f_CreateTranslationRotationScale(
+        &model, &cube.Pose.position, &cube.Pose.orientation, &cube.Scale);
+    XrMatrix4x4f mvp;
+    XrMatrix4x4f_Multiply(&mvp, &vp, &model);
+    glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE,
+                       reinterpret_cast<const GLfloat *>(&mvp));
 
-  //     // Draw the cube.
-  //     glDrawElements(GL_TRIANGLES,
-  //                    static_cast<GLsizei>(ArraySize(Geometry::c_cubeIndices)),
-  //                    GL_UNSIGNED_SHORT, nullptr);
-  //   }
+    // Draw the cube.
+    glDrawElements(GL_TRIANGLES,
+                   static_cast<GLsizei>(_countof(Geometry::c_cubeIndices)),
+                   GL_UNSIGNED_SHORT, nullptr);
+  }
 
-  //   glBindVertexArray(0);
-  //   glUseProgram(0);
-  //   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glBindVertexArray(0);
+  glUseProgram(0);
 }
 
 std::shared_ptr<OglDrawable> OglDrawable::Create() {

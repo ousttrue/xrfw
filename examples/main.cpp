@@ -1,6 +1,4 @@
-#include <gl/glew.h>
-
-#include "oglrenderer.h"
+#include "ogldrawable.h"
 #include <windows.h>
 #define XR_USE_GRAPHICS_API_OPENGL
 #include <openxr/openxr_platform.h>
@@ -13,22 +11,24 @@
 #include <plog/Log.h>
 #include <xrfw.h>
 
+#include "oglrenderer.h"
+
 int main(int argc, char **argv) {
   // OpenGL context
   if (!glfwInit()) {
-    return -1;
+    return 11;
   }
 
   // Create a windowed mode window and its OpenGL context
   auto window = glfwCreateWindow(640, 480, "Hello xrfw", nullptr, nullptr);
   if (!window) {
     glfwTerminate();
-    return -2;
+    return 12;
   }
   // Make the window's context current
   glfwMakeContextCurrent(window);
   PLOG_INFO << glGetString(GL_VERSION);
-  glewInit();
+  OglInitialize();
 
   // require openxr graphics extension
   const char *extensions[] = {
@@ -65,12 +65,17 @@ int main(int argc, char **argv) {
   }
 
   OglRenderer renderer;
+  auto drawable = OglDrawable::Create();
 
   // glfw mainloop
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
-    if (xrfwPollEventsAndIsActive()) {
+    if (xrfwPollEventsIsSessionActive()) {
+
+      // For each locatable space that we want to visualize, render a 25cm cube.
+      std::vector<Cube> cubes;
+      cubes.push_back(Cube{{}, {0.25f, 0.25f, 0.25f}});
 
       XrTime frameTime;
       XrView views[2]{
@@ -86,8 +91,9 @@ int main(int argc, char **argv) {
                   swapchainImage)
                   ->image;
           // render
-          renderer.RenderView(colorTexture, left_width, left_height, frameTime,
-                              views[0]);
+          renderer.BeginFbo(colorTexture, left_width, left_height);
+          drawable->Render(views[0], cubes);
+          renderer.EndFbo();
           xrfwReleaseSwapchain(left);
         }
         // right
@@ -98,8 +104,9 @@ int main(int argc, char **argv) {
                   swapchainImage)
                   ->image;
           // render
-          renderer.RenderView(colorTexture, right_width, right_height,
-                              frameTime, views[1]);
+          renderer.BeginFbo(colorTexture, right_width, right_height);
+          drawable->Render(views[1], cubes);
+          renderer.EndFbo();
           xrfwReleaseSwapchain(right);
         }
       }
