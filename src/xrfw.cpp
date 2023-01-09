@@ -421,3 +421,47 @@ XRFW_API int xrfwPollEventsAndIsActive() {
   }
   return g_sessionRunning;
 }
+
+XRFW_API int xrfwBeginFrame(XrTime *outtime) {
+  XrFrameWaitInfo frameWaitInfo{XR_TYPE_FRAME_WAIT_INFO};
+  XrFrameState frameState{XR_TYPE_FRAME_STATE};
+  auto result = xrWaitFrame(g_session, &frameWaitInfo, &frameState);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    return false;
+  }
+  *outtime = frameState.predictedDisplayTime;
+
+  static XrBool32 shouldRender_ = false;
+  if (shouldRender_ != frameState.shouldRender) {
+    PLOG_INFO << "shouldRender: " << shouldRender_ << " => "
+              << frameState.shouldRender;
+    shouldRender_ = frameState.shouldRender;
+  }
+
+  XrFrameBeginInfo frameBeginInfo{XR_TYPE_FRAME_BEGIN_INFO};
+  result = xrBeginFrame(g_session, &frameBeginInfo);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << result;
+    return false;
+  }
+
+  return shouldRender_;
+}
+
+XRFW_API int xrfwEndFrame(XrTime predictedDisplayTime,
+                          const XrCompositionLayerBaseHeader *layer) {
+  XrFrameEndInfo frameEndInfo{
+      .type = XR_TYPE_FRAME_END_INFO,
+      .displayTime = predictedDisplayTime, //  frameState.predictedDisplayTime,
+      .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+      .layerCount = static_cast<uint32_t>(layer ? 1 : 0),
+      .layers = layer ? &layer : nullptr,
+  };
+  auto result = xrEndFrame(g_session, &frameEndInfo);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrEndFrame: " << result;
+    return false;
+  }
+  return true;
+}

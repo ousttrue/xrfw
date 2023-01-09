@@ -57,7 +57,14 @@ int main(int argc, char **argv) {
     glfwPollEvents();
 
     if(xrfwPollEventsAndIsActive()) {
-      oxr.RenderFrame();
+
+      XrTime frameTime;
+      if(xrfwBeginFrame(&frameTime))
+      {
+        oxr.RenderFrame();
+      }
+      xrfwEndFrame(frameTime, nullptr);
+
     } else {
       // session is not active
       Sleep(20);

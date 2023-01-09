@@ -60,49 +60,17 @@ bool OxrRenderer::Initialize() {
 }
 
 void OxrRenderer::RenderFrame() {
-  XrFrameWaitInfo frameWaitInfo{XR_TYPE_FRAME_WAIT_INFO};
-  XrFrameState frameState{XR_TYPE_FRAME_STATE};
-  auto result = xrWaitFrame(session_, &frameWaitInfo, &frameState);
-  if (XR_FAILED(result)) {
-    PLOG_FATAL << result;
-    throw std::runtime_error("xrWaitFrame");
-  }
-  static XrBool32 shouldRender_ = false;
-  if (shouldRender_ != frameState.shouldRender) {
-    PLOG_INFO << "shouldRender: " << shouldRender_ << " => "
-              << frameState.shouldRender;
-    shouldRender_ = frameState.shouldRender;
-  }
 
-  XrFrameBeginInfo frameBeginInfo{XR_TYPE_FRAME_BEGIN_INFO};
-  result = xrBeginFrame(session_, &frameBeginInfo);
-  if (XR_FAILED(result)) {
-    PLOG_FATAL << result;
-    throw std::runtime_error("xrBeginFrame");
-  }
+  // const XrCompositionLayerBaseHeader *layers[] = {nullptr};
+  // std::optional<XrCompositionLayerProjection> layer;
+  // if (frameState.shouldRender == XR_TRUE) {
+  //   layer = RenderLayer(frameState.predictedDisplayTime);
+  //   if (layer) {
+  //     layers[0] = (const XrCompositionLayerBaseHeader *)&layer.value();
+  //   }
+  // }
 
-  const XrCompositionLayerBaseHeader *layers[] = {nullptr};
-  std::optional<XrCompositionLayerProjection> layer;
-  if (frameState.shouldRender == XR_TRUE) {
-    layer = RenderLayer(frameState.predictedDisplayTime);
-    if (layer) {
-      layers[0] = (const XrCompositionLayerBaseHeader *)&layer.value();
-    }
-  }
-
-  auto pLayer = (layer ? &layer.value() : nullptr);
-  XrFrameEndInfo frameEndInfo{
-      .type = XR_TYPE_FRAME_END_INFO,
-      .displayTime = frameState.predictedDisplayTime,
-      .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-      .layerCount = (uint32_t)(pLayer ? 1 : 0),
-      .layers = layers,
-  };
-  result = xrEndFrame(session_, &frameEndInfo);
-  if (XR_FAILED(result)) {
-    PLOG_FATAL << result;
-    throw std::runtime_error("xrEndFrame");
-  }
+  // auto pLayer = (layer ? &layer.value() : nullptr);
 }
 
 std::optional<XrCompositionLayerProjection>
