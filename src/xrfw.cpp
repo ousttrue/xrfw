@@ -50,11 +50,14 @@ static const int GPU_LEVEL = 3;
 static const int NUM_MULTI_SAMPLES = 4;
 static const int MAX_NUM_EYES = 2;
 static const int MAX_NUM_LAYERS = 16;
+// App only supports the primary stereo view config.
+static const XrViewConfigurationType g_supportedViewConfigType =
+    XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 
 XrInstance g_instance = nullptr;
 XrSystemId g_systemId = {};
 XrSession g_session = nullptr;
-XrViewConfigurationProperties g_viewportConfig;
+// XrViewConfigurationProperties g_viewportConfig;
 XrEventDataBuffer g_eventDataBuffer = {};
 XrSessionState g_sessionState = XR_SESSION_STATE_UNKNOWN;
 bool g_sessionRunning = false;
@@ -201,9 +204,6 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
     return nullptr;
   }
 
-  // App only supports the primary stereo view config.
-  const XrViewConfigurationType supportedViewConfigType =
-      XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
   // viewports
   {
     // Enumerate the viewport configurations.
@@ -242,8 +242,9 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
       PLOG_INFO << "  [" << i << "]FovMutable="
                 << (viewportConfig.fovMutable ? "true" : "false")
                 << " ConfigurationType " << viewportConfig.viewConfigurationType
-                << (viewportConfigType == supportedViewConfigType ? " Selected"
-                                                                  : "");
+                << (viewportConfigType == g_supportedViewConfigType
+                        ? " Selected"
+                        : "");
 
       uint32_t viewCount;
       result = xrEnumerateViewConfigurationViews(
@@ -252,58 +253,20 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
         PLOG_FATAL << "xrEnumerateViewConfigurationViews: " << result;
         return nullptr;
       }
-      if (viewCount > 0) {
-        std::vector<XrViewConfigurationView> elements(
-            viewCount, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
-
-        result = xrEnumerateViewConfigurationViews(
-            g_instance, g_systemId, viewportConfigType, viewCount, &viewCount,
-            elements.data());
-        if (XR_FAILED(result)) {
-          PLOG_FATAL << "xrEnumerateViewConfigurationViews: " << result;
-          return nullptr;
-        }
-        // Log the view config info for each view type for debugging purposes.
-        for (uint32_t e = 0; e < viewCount; e++) {
-          const XrViewConfigurationView *element = &elements[e];
-
-          PLOG_INFO << "    [" << i << "]"
-                    << "Viewport [" << e << "]: Recommended Width="
-                    << element->recommendedImageRectWidth
-                    << " Height=" << element->recommendedImageRectHeight
-                    << " SampleCount = "
-                    << element->recommendedSwapchainSampleCount;
-
-          PLOG_INFO << "    [" << i << "]"
-                    << "Viewport [" << e
-                    << "]: Max Width=" << element->maxImageRectWidth
-                    << " Height=" << element->maxImageRectHeight
-                    << " SampleCount = " << element->maxSwapchainSampleCount;
-        }
-
-        // Cache the view config properties for the selected config type.
-        if (viewportConfigType == supportedViewConfigType) {
-          assert(viewCount == MAX_NUM_EYES);
-          // g_viewConfigurationView = elements;
-        }
-      } else {
-        PLOG_ERROR << "    [" << i << "]"
-                   << "Empty viewport configuration type: " << viewCount;
-      }
     }
   }
 
   // Get the viewport configuration info for the chosen viewport configuration
   // type.
-  g_viewportConfig.type = XR_TYPE_VIEW_CONFIGURATION_PROPERTIES;
-  result = xrGetViewConfigurationProperties(
-      g_instance, g_systemId, supportedViewConfigType, &g_viewportConfig);
-  if (XR_FAILED(result)) {
-    PLOG_FATAL << "xrGetViewConfigurationProperties: " << result;
-    return nullptr;
-  }
-
-  assert(g_viewportConfig.viewConfigurationType == supportedViewConfigType);
+  // g_viewportConfig = {.type = XR_TYPE_VIEW_CONFIGURATION_PROPERTIES};
+  // result = xrGetViewConfigurationProperties(
+  //     g_instance, g_systemId, g_supportedViewConfigType, &g_viewportConfig);
+  // if (XR_FAILED(result)) {
+  //   PLOG_FATAL << "xrGetViewConfigurationProperties: " << result;
+  //   return nullptr;
+  // }
+  // assert(g_viewportConfig.viewConfigurationType ==
+  // g_supportedViewConfigType);
 
   // base space
   {
@@ -355,6 +318,38 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
 XRFW_API void xrfwDestroySession(void *session) {
   assert(session == g_session);
   xrDestroySession((XrSession)session);
+}
+
+XRFW_API XrBool32 xrfwGetViewConfigurationViews(
+    XrViewConfigurationView *viewConfigurationViews, uint32_t viewCount) {
+
+  for (int i = 0; i < viewCount; ++i) {
+    viewConfigurationViews[i] = {XR_TYPE_VIEW_CONFIGURATION_VIEW};
+  }
+  auto result = xrEnumerateViewConfigurationViews(
+      g_instance, g_systemId, g_supportedViewConfigType, viewCount, &viewCount,
+      viewConfigurationViews);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrEnumerateViewConfigurationViews: " << result;
+    return {};
+  }
+
+  // Log the view config info for each view type for debugging purposes.
+  for (uint32_t e = 0; e < viewCount; e++) {
+    const XrViewConfigurationView *element = &viewConfigurationViews[e];
+
+    PLOG_INFO << "Viewport [" << e
+              << "]: Recommended Width=" << element->recommendedImageRectWidth
+              << " Height=" << element->recommendedImageRectHeight
+              << " SampleCount = " << element->recommendedSwapchainSampleCount;
+
+    PLOG_INFO << "Viewport [" << e
+              << "]: Max Width=" << element->maxImageRectWidth
+              << " Height=" << element->maxImageRectHeight
+              << " SampleCount = " << element->maxSwapchainSampleCount;
+  }
+
+  return XR_TRUE;
 }
 
 // Return event if one is available, otherwise return null.
@@ -442,7 +437,7 @@ static void HandleSessionStateChangedEvent(
   }
 }
 
-XRFW_API int xrfwPollEventsAndIsActive() {
+XRFW_API XrBool32 xrfwPollEventsAndIsActive() {
   // Process all pending messages.
   while (const XrEventDataBaseHeader *event = TryReadNextEvent()) {
     switch (event->type) {
@@ -470,7 +465,7 @@ XRFW_API int xrfwPollEventsAndIsActive() {
   return g_sessionRunning;
 }
 
-XRFW_API int xrfwBeginFrame(XrTime *outtime, XrView views[2]) {
+XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrView views[2]) {
   XrFrameWaitInfo frameWaitInfo{XR_TYPE_FRAME_WAIT_INFO};
   XrFrameState frameState{XR_TYPE_FRAME_STATE};
   auto result = xrWaitFrame(g_session, &frameWaitInfo, &frameState);
@@ -520,8 +515,8 @@ XRFW_API int xrfwBeginFrame(XrTime *outtime, XrView views[2]) {
   return shouldRender_;
 }
 
-XRFW_API int xrfwEndFrame(XrTime predictedDisplayTime,
-                          XrCompositionLayerProjection *layer) {
+XRFW_API XrBool32 xrfwEndFrame(XrTime predictedDisplayTime,
+                               XrCompositionLayerProjection *layer) {
   if (!layer) {
     // no renderring
     XrFrameEndInfo frameEndInfo{

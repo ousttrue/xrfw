@@ -45,10 +45,18 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  OxrRenderer oxr(instance, session);
-
-  if (!oxr.CreateSwapchains(2)) {
+  XrViewConfigurationView viewConfigurationViews[2];
+  if(!xrfwGetViewConfigurationViews(viewConfigurationViews, 2))
+  {
     return 3;
+  }
+
+  OxrRenderer oxr(instance, session);
+  if (!oxr.CreateSwapchain(viewConfigurationViews[0])) {
+    return 4;
+  }
+  if (!oxr.CreateSwapchain(viewConfigurationViews[1])) {
+    return 5;
   }
 
   // glfw mainloop

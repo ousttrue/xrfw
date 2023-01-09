@@ -27,10 +27,13 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC);
 
 XRFW_API void xrfwDestroySession(void *session);
 
-XRFW_API int xrfwPollEventsAndIsActive();
-XRFW_API int xrfwBeginFrame(XrTime *outtime, XrView views[2]);
-XRFW_API int xrfwEndFrame(XrTime predictedDisplayTime,
-                          XrCompositionLayerProjection *layer);
+XRFW_API XrBool32 xrfwGetViewConfigurationViews(
+    XrViewConfigurationView *viewConfigurationViews, uint32_t viewCount);
+
+XRFW_API XrBool32 xrfwPollEventsAndIsActive();
+XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrView views[2]);
+XRFW_API XrBool32 xrfwEndFrame(XrTime predictedDisplayTime,
+                               XrCompositionLayerProjection *layer);
 
 //
 #include <iosfwd>

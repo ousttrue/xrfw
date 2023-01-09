@@ -60,51 +60,58 @@ OxrRenderer::OxrRenderer(XrInstance instance, XrSession session)
 
 OxrRenderer::~OxrRenderer() {}
 
-bool OxrRenderer::CreateSwapchains(int viewCount) {
+// bool OxrRenderer::CreateSwapchains(int viewCount) {
 
-  // Select a swapchain format.
-  uint32_t swapchainFormatCount;
-  auto result =
-      xrEnumerateSwapchainFormats(session_, 0, &swapchainFormatCount, nullptr);
-  if (XR_FAILED(result)) {
-    PLOG_FATAL << result;
-    return false;
-  }
+//   // Select a swapchain format.
+//   uint32_t swapchainFormatCount;
+//   auto result =
+//       xrEnumerateSwapchainFormats(session_, 0, &swapchainFormatCount, nullptr);
+//   if (XR_FAILED(result)) {
+//     PLOG_FATAL << result;
+//     return false;
+//   }
 
-  std::vector<int64_t> swapchainFormats(swapchainFormatCount);
-  result = xrEnumerateSwapchainFormats(
-      session_, (uint32_t)swapchainFormats.size(), &swapchainFormatCount,
-      swapchainFormats.data());
-  if (XR_FAILED(result)) {
-    PLOG_FATAL << result;
-    return false;
-  }
-  assert(swapchainFormatCount == swapchainFormats.size());
+//   std::vector<int64_t> swapchainFormats(swapchainFormatCount);
+//   result = xrEnumerateSwapchainFormats(
+//       session_, (uint32_t)swapchainFormats.size(), &swapchainFormatCount,
+//       swapchainFormats.data());
+//   if (XR_FAILED(result)) {
+//     PLOG_FATAL << result;
+//     return false;
+//   }
+//   assert(swapchainFormatCount == swapchainFormats.size());
 
-  auto colorSwapchainFormat = SelectColorSwapchainFormat(swapchainFormats);
+//   auto colorSwapchainFormat = SelectColorSwapchainFormat(swapchainFormats);
 
-  // Print swapchain formats and the selected one.
-  {
-    std::string swapchainFormatsString;
-    for (int64_t format : swapchainFormats) {
-      const bool selected = format == colorSwapchainFormat;
-      swapchainFormatsString += " ";
-      if (selected) {
-        swapchainFormatsString += "[";
-      }
-      swapchainFormatsString += ToGLString(format);
-      if (selected) {
-        swapchainFormatsString += "]";
-      }
-    }
-    PLOG_DEBUG << "Swapchain Formats: " << swapchainFormatsString;
-  }
+//   // Print swapchain formats and the selected one.
+//   {
+//     std::string swapchainFormatsString;
+//     for (int64_t format : swapchainFormats) {
+//       const bool selected = format == colorSwapchainFormat;
+//       swapchainFormatsString += " ";
+//       if (selected) {
+//         swapchainFormatsString += "[";
+//       }
+//       swapchainFormatsString += ToGLString(format);
+//       if (selected) {
+//         swapchainFormatsString += "]";
+//       }
+//     }
+//     PLOG_DEBUG << "Swapchain Formats: " << swapchainFormatsString;
+//   }
 
-  //   // Create a swapchain for each view.
-  //   for (uint32_t i = 0; i < viewCount; i++) {
+//   // Create a swapchain for each view.
+//   for (uint32_t i = 0; i < viewCount; i++) {
+//   }
+// }
+
+bool OxrRenderer::CreateSwapchain(
+    const XrViewConfigurationView &viewConfigurationView) {
+
   //     const XrViewConfigurationView &vp = m_configViews[i];
   //     Log::Write(Log::Level::Info,
-  //                Fmt("Creating swapchain for view %d with dimensions Width=%d
+  //                Fmt("Creating swapchain for view %d with dimensions
+  //                Width=%d
   //                "
   //                    "Height=%d SampleCount=%d",
   //                    i, vp.recommendedImageRectWidth,
@@ -146,7 +153,6 @@ bool OxrRenderer::CreateSwapchains(int viewCount) {
 
   //     m_swapchainImages.insert(
   //         std::make_pair(swapchain.handle, std::move(swapchainImages)));
-  //   }
 
   return false;
 }
