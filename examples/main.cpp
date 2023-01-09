@@ -72,52 +72,15 @@ int main(int argc, char **argv) {
 
     if (xrfwPollEventsAndIsActive()) {
 
-      XrCompositionLayerProjection *layer = nullptr;
       XrTime frameTime;
       XrView views[2]{
           {XR_TYPE_VIEW},
           {XR_TYPE_VIEW},
       };
-      XrCompositionLayerProjectionView projectionLayerViews[2] = {};
-      XrCompositionLayerProjection projection{
-          .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
-          .next = nullptr,
-          .layerFlags = 0,
-          .space = {},
-          .viewCount = 2,
-          .views = projectionLayerViews,
-      };
       if (xrfwBeginFrame(&frameTime, views)) {
-        projectionLayerViews[0] = {
-            .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
-            .pose = views[0].pose,
-            .fov = views[0].fov,
-            .subImage =
-                {
-                    .swapchain = left,
-                    .imageRect =
-                        {
-                            .offset = {0, 0},
-                            .extent = {left_width, left_height},
-                        },
-                },
-        };
-        projectionLayerViews[1] = {
-            .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
-            .pose = views[1].pose,
-            .fov = views[1].fov,
-            .subImage =
-                {
-                    .swapchain = right,
-                    .imageRect =
-                        {
-                            .offset = {0, 0},
-                            .extent = {right_width, right_height},
-                        },
-                },
-        };
         // left
-        if (auto swapchainImage = xrfwAcquireSwapchain(left)) {
+        if (auto swapchainImage =
+                xrfwAcquireSwapchain(0, left, left_width, left_height)) {
           const uint32_t colorTexture =
               reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(
                   swapchainImage)
@@ -128,7 +91,8 @@ int main(int argc, char **argv) {
           xrfwReleaseSwapchain(left);
         }
         // right
-        if (auto swapchainImage = xrfwAcquireSwapchain(right)) {
+        if (auto swapchainImage =
+                xrfwAcquireSwapchain(1, right, right_width, right_height)) {
           const uint32_t colorTexture =
               reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(
                   swapchainImage)
@@ -138,11 +102,8 @@ int main(int argc, char **argv) {
                               frameTime, views[1]);
           xrfwReleaseSwapchain(right);
         }
-
-        layer = &projection;
       }
-      xrfwEndFrame(frameTime, layer);
-
+      xrfwEndFrame();
     } else {
       // session is not active
       Sleep(20);

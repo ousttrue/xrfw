@@ -1,3 +1,6 @@
+#define WINDOWS_LEAN_AND_MEAN
+#include <Windows.h>
+
 #define PLOG_EXPORT
 #include <iomanip>
 #include <plog/Appenders/ColorConsoleAppender.h>
@@ -38,9 +41,6 @@ public:
 };
 } // namespace plog
 
-#define WINDOWS_LEAN_AND_MEAN
-#include <Windows.h>
-
 #include <algorithm>
 #include <list>
 #include <openxr/openxr.h>
@@ -64,6 +64,9 @@ XrSpace g_currentSpace = {};
 XrSpace g_headSpace = {};
 XrSpace g_localSpace = {};
 
+XrFrameState g_frameState{XR_TYPE_FRAME_STATE};
+XrCompositionLayerProjectionView g_projectionLayerViews[2] = {};
+XrCompositionLayerProjection g_projection = {};
 std::list<std::vector<XrSwapchainImageOpenGLKHR>> g_swapchainImageBuffers;
 std::unordered_map<XrSwapchain, std::vector<XrSwapchainImageBaseHeader *>>
     g_swapchainImages;
@@ -479,7 +482,16 @@ xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
 }
 
 XRFW_API const XrSwapchainImageBaseHeader *
-xrfwAcquireSwapchain(XrSwapchain swapchain) {
+xrfwAcquireSwapchain(int i, XrSwapchain swapchain, int width, int height) {
+  g_projectionLayerViews[i].subImage = {
+      .swapchain = swapchain,
+      .imageRect =
+          {
+              .offset = {0, 0},
+              .extent = {width, height},
+          },
+  };
+
   XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
   uint32_t swapchainImageIndex;
   auto result =
@@ -631,6 +643,7 @@ XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrView views[2]) {
     PLOG_FATAL << result;
     return false;
   }
+  g_frameState = frameState;
   *outtime = frameState.predictedDisplayTime;
 
   static XrBool32 shouldRender_ = false;
@@ -670,44 +683,55 @@ XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrView views[2]) {
     assert(viewCountOutput == 2);
   }
 
+  g_projection = {
+      .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
+      .next = nullptr,
+      .layerFlags = 0,
+      .space = g_currentSpace,
+      .viewCount = 2,
+      .views = g_projectionLayerViews,
+  };
+  g_projectionLayerViews[0] = {
+      .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+      .pose = views[0].pose,
+      .fov = views[0].fov,
+  };
+  g_projectionLayerViews[1] = {
+      .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+      .pose = views[1].pose,
+      .fov = views[1].fov,
+  };
+
   return shouldRender_;
 }
 
-XRFW_API XrBool32 xrfwEndFrame(XrTime predictedDisplayTime,
-                               XrCompositionLayerProjection *layer) {
-  if (!layer) {
+XRFW_API XrBool32 xrfwEndFrame() {
+  XrFrameEndInfo frameEndInfo = {};
+  if (!g_frameState.shouldRender) {
     // no renderring
-    XrFrameEndInfo frameEndInfo{
+    frameEndInfo = {
         .type = XR_TYPE_FRAME_END_INFO,
-        .displayTime =
-            predictedDisplayTime, //  frameState.predictedDisplayTime,
+        .displayTime = g_frameState.predictedDisplayTime,
         .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
         .layerCount = 0,
         .layers = nullptr,
     };
-    auto result = xrEndFrame(g_session, &frameEndInfo);
-    if (XR_FAILED(result)) {
-      PLOG_FATAL << "xrEndFrame: " << result;
-      return false;
-    }
-    return true;
   } else {
-    layer->space = g_currentSpace;
     const XrCompositionLayerBaseHeader *layers[] = {
-        (const XrCompositionLayerBaseHeader *)layer};
-    XrFrameEndInfo frameEndInfo{
+        (const XrCompositionLayerBaseHeader *)&g_projection};
+    frameEndInfo = {
         .type = XR_TYPE_FRAME_END_INFO,
-        .displayTime =
-            predictedDisplayTime, //  frameState.predictedDisplayTime,
+        .displayTime = g_frameState.predictedDisplayTime,
         .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
         .layerCount = 1,
         .layers = layers,
     };
-    auto result = xrEndFrame(g_session, &frameEndInfo);
-    if (XR_FAILED(result)) {
-      PLOG_FATAL << "xrEndFrame: " << result;
-      return false;
-    }
-    return true;
   }
+
+  auto result = xrEndFrame(g_session, &frameEndInfo);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrEndFrame: " << result;
+    return false;
+  }
+  return true;
 }
