@@ -47,6 +47,10 @@ int main(int argc, char **argv) {
 
   OxrRenderer oxr(instance, session);
 
+  if (!oxr.CreateSwapchains(2)) {
+    return 3;
+  }
+
   // glfw mainloop
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();

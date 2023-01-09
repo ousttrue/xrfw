@@ -14,9 +14,11 @@ class OxrRenderer {
   Swapchain swapchains_[2];
 
   XrCompositionLayerProjectionView projectionLayerViews_[2];
+
 public:
   OxrRenderer(XrInstance instance, XrSession session);
   ~OxrRenderer();
+  bool CreateSwapchains(int viewCount);
   std::optional<XrCompositionLayerProjection>
   RenderLayer(XrTime predictedDisplayTime, const XrView views[2]);
 };
