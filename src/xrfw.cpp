@@ -58,6 +58,9 @@ XrViewConfigurationProperties g_viewportConfig;
 XrEventDataBuffer g_eventDataBuffer = {};
 XrSessionState g_sessionState = XR_SESSION_STATE_UNKNOWN;
 bool g_sessionRunning = false;
+XrSpace g_currentSpace = {};
+XrSpace g_headSpace = {};
+XrSpace g_localSpace = {};
 
 XRFW_API XrInstance xrfwGetInstance() { return g_instance; }
 
@@ -301,6 +304,51 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
   }
 
   assert(g_viewportConfig.viewConfigurationType == supportedViewConfigType);
+
+  // base space
+  {
+    XrReferenceSpaceCreateInfo spaceCreateInfo = {
+        .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+        .referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE,
+        .poseInReferenceSpace =
+            {
+                .orientation = {0, 0, 0, 1},
+                .position = {0, 0, 0},
+            },
+    };
+    auto result =
+        xrCreateReferenceSpace(g_session, &spaceCreateInfo, &g_currentSpace);
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << result;
+      return {};
+    }
+  }
+
+  // head / local
+  {
+    XrReferenceSpaceCreateInfo spaceCreateInfo = {
+        .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+        .referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW,
+        .poseInReferenceSpace =
+            {
+                .orientation = {0, 0, 0, 1},
+                .position = {0, 0, 0},
+            },
+    };
+    auto result =
+        xrCreateReferenceSpace(g_session, &spaceCreateInfo, &g_headSpace);
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << result;
+      return {};
+    }
+    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+    result = xrCreateReferenceSpace(g_session, &spaceCreateInfo, &g_localSpace);
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << result;
+      return {};
+    }
+  }
+
   return g_session;
 }
 
@@ -422,7 +470,7 @@ XRFW_API int xrfwPollEventsAndIsActive() {
   return g_sessionRunning;
 }
 
-XRFW_API int xrfwBeginFrame(XrTime *outtime) {
+XRFW_API int xrfwBeginFrame(XrTime *outtime, XrView views[2]) {
   XrFrameWaitInfo frameWaitInfo{XR_TYPE_FRAME_WAIT_INFO};
   XrFrameState frameState{XR_TYPE_FRAME_STATE};
   auto result = xrWaitFrame(g_session, &frameWaitInfo, &frameState);
@@ -446,22 +494,67 @@ XRFW_API int xrfwBeginFrame(XrTime *outtime) {
     return false;
   }
 
+  if (shouldRender_) {
+    // view
+    XrViewState viewState{XR_TYPE_VIEW_STATE};
+    XrViewLocateInfo viewLocateInfo{
+        .type = XR_TYPE_VIEW_LOCATE_INFO,
+        .viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+        .displayTime = frameState.predictedDisplayTime,
+        .space = g_currentSpace,
+    };
+    uint32_t viewCountOutput;
+    auto result = xrLocateViews(g_session, &viewLocateInfo, &viewState, 2,
+                                &viewCountOutput, views);
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << "xrLocateViews: " << result;
+      return false;
+    }
+    if ((viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) == 0 ||
+        (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) == 0) {
+      return false; // There is no valid tracking poses for the views.
+    }
+    assert(viewCountOutput == 2);
+  }
+
   return shouldRender_;
 }
 
 XRFW_API int xrfwEndFrame(XrTime predictedDisplayTime,
-                          const XrCompositionLayerBaseHeader *layer) {
-  XrFrameEndInfo frameEndInfo{
-      .type = XR_TYPE_FRAME_END_INFO,
-      .displayTime = predictedDisplayTime, //  frameState.predictedDisplayTime,
-      .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-      .layerCount = static_cast<uint32_t>(layer ? 1 : 0),
-      .layers = layer ? &layer : nullptr,
-  };
-  auto result = xrEndFrame(g_session, &frameEndInfo);
-  if (XR_FAILED(result)) {
-    PLOG_FATAL << "xrEndFrame: " << result;
-    return false;
+                          XrCompositionLayerProjection *layer) {
+  if (!layer) {
+    // no renderring
+    XrFrameEndInfo frameEndInfo{
+        .type = XR_TYPE_FRAME_END_INFO,
+        .displayTime =
+            predictedDisplayTime, //  frameState.predictedDisplayTime,
+        .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+        .layerCount = 0,
+        .layers = nullptr,
+    };
+    auto result = xrEndFrame(g_session, &frameEndInfo);
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << "xrEndFrame: " << result;
+      return false;
+    }
+    return true;
+  } else {
+    layer->space = g_currentSpace;
+    const XrCompositionLayerBaseHeader *layers[] = {
+        (const XrCompositionLayerBaseHeader *)layer};
+    XrFrameEndInfo frameEndInfo{
+        .type = XR_TYPE_FRAME_END_INFO,
+        .displayTime =
+            predictedDisplayTime, //  frameState.predictedDisplayTime,
+        .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+        .layerCount = 1,
+        .layers = layers,
+    };
+    auto result = xrEndFrame(g_session, &frameEndInfo);
+    if (XR_FAILED(result)) {
+      PLOG_FATAL << "xrEndFrame: " << result;
+      return false;
+    }
+    return true;
   }
-  return true;
 }

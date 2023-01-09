@@ -28,9 +28,9 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC);
 XRFW_API void xrfwDestroySession(void *session);
 
 XRFW_API int xrfwPollEventsAndIsActive();
-XRFW_API int xrfwBeginFrame(XrTime *outtime);
+XRFW_API int xrfwBeginFrame(XrTime *outtime, XrView views[2]);
 XRFW_API int xrfwEndFrame(XrTime predictedDisplayTime,
-                          const XrCompositionLayerBaseHeader *layer);
+                          XrCompositionLayerProjection *layer);
 
 //
 #include <iosfwd>

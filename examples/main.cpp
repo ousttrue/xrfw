@@ -1,5 +1,5 @@
-#include "openxr/openxr.h"
 #include <windows.h>
+#define XR_USE_GRAPHICS_API_OPENGL
 #include <openxr/openxr_platform.h>
 
 #include <GLFW/glfw3.h>
@@ -45,25 +45,26 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  // OxrSessionState sessionState(instance, session);
-
   OxrRenderer oxr(instance, session);
-  if (!oxr.Initialize()) {
-    return 3;
-  }
 
   // glfw mainloop
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
-    if(xrfwPollEventsAndIsActive()) {
+    if (xrfwPollEventsAndIsActive()) {
 
+      XrCompositionLayerProjection *layer = nullptr;
       XrTime frameTime;
-      if(xrfwBeginFrame(&frameTime))
-      {
-        oxr.RenderFrame();
+      XrView views[2]{
+          {XR_TYPE_VIEW},
+          {XR_TYPE_VIEW},
+      };
+      if (xrfwBeginFrame(&frameTime, views)) {
+        if (auto projection = oxr.RenderLayer(frameTime, views)) {
+          layer = &projection.value();
+        }
       }
-      xrfwEndFrame(frameTime, nullptr);
+      xrfwEndFrame(frameTime, layer);
 
     } else {
       // session is not active
