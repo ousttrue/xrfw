@@ -1,7 +1,10 @@
 #pragma once
 #include <string_view>
+
+#ifdef XR_USE_PLATFORM_WIN32
 #define WINDOWS_LEAN_AND_MEAN
 #include <Windows.h>
+#endif
 
 #include <openxr/openxr.h>
 #include <stdint.h>
@@ -18,7 +21,9 @@ XRFW_API void xrfwDestroyInstance();
 
 XRFW_API XrInstance xrfwGetInstance();
 
+#ifdef XR_USE_PLATFORM_WIN32
 XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC);
+#endif
 
 XRFW_API void xrfwDestroySession(void *session);
 

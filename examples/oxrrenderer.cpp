@@ -3,7 +3,6 @@
 #include <optional>
 #include <stdexcept>
 #include <xrfw.h>
-
 #include <plog/Log.h>
 
 OxrRenderer::OxrRenderer(XrInstance instance, XrSession session)
@@ -82,7 +81,6 @@ void OxrRenderer::RenderFrame() {
     throw std::runtime_error("xrBeginFrame");
   }
 
-  // std::vector<XrCompositionLayerProjectionView> projectionLayerViews;
   const XrCompositionLayerBaseHeader *layers[] = {nullptr};
   std::optional<XrCompositionLayerProjection> layer;
   if (frameState.shouldRender == XR_TRUE) {
@@ -202,3 +200,4 @@ OxrRenderer::RenderLayer(XrTime predictedDisplayTime) {
       .views = projectionLayerViews,
   };
 }
+

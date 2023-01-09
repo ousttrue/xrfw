@@ -1,6 +1,5 @@
 #include "openxr/openxr.h"
 #include <windows.h>
-#define XR_USE_GRAPHICS_API_OPENGL
 #include <openxr/openxr_platform.h>
 
 #include <GLFW/glfw3.h>
