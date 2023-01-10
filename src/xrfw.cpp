@@ -41,6 +41,7 @@ public:
 };
 } // namespace plog
 
+#include "xr_linear.h"
 #include <algorithm>
 #include <list>
 #include <openxr/openxr.h>
@@ -635,7 +636,16 @@ XRFW_API XrBool32 xrfwPollEventsIsSessionActive() {
   return g_sessionRunning;
 }
 
-XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrView views[2]) {
+static void poseToMatrix(XrMatrix4x4f *view, const XrPosef &pose) {
+  XrMatrix4x4f toView;
+  XrVector3f scale{1.f, 1.f, 1.f};
+  XrMatrix4x4f_CreateTranslationRotationScale(&toView, &pose.position,
+                                              &pose.orientation, &scale);
+  XrMatrix4x4f_InvertRigidBody(view, &toView);
+}
+
+XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime,
+                                 XrfwViewMatrices *viewMatrix) {
   XrFrameWaitInfo frameWaitInfo{XR_TYPE_FRAME_WAIT_INFO};
   XrFrameState frameState{XR_TYPE_FRAME_STATE};
   auto result = xrWaitFrame(g_session, &frameWaitInfo, &frameState);
@@ -660,6 +670,10 @@ XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrView views[2]) {
     return false;
   }
 
+  XrView views[2]{
+      {XR_TYPE_VIEW},
+      {XR_TYPE_VIEW},
+  };
   if (shouldRender_) {
     // view
     XrViewState viewState{XR_TYPE_VIEW_STATE};
@@ -681,6 +695,16 @@ XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrView views[2]) {
       return false; // There is no valid tracking poses for the views.
     }
     assert(viewCountOutput == 2);
+
+    // update matrix
+    XrMatrix4x4f_CreateProjectionFov((XrMatrix4x4f *)viewMatrix->leftProjection,
+                                     GRAPHICS_OPENGL, views[0].fov, 0.05f,
+                                     100.0f);
+    poseToMatrix((XrMatrix4x4f *)viewMatrix->leftView, views[0].pose);
+    XrMatrix4x4f_CreateProjectionFov(
+        (XrMatrix4x4f *)viewMatrix->rightProjection, GRAPHICS_OPENGL,
+        views[1].fov, 0.05f, 100.0f);
+    poseToMatrix((XrMatrix4x4f *)viewMatrix->rightView, views[1].pose);
   }
 
   g_projection = {

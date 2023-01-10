@@ -1,5 +1,4 @@
 #include "ogldrawable.h"
-#include "xr_linear.h"
 #include <gl/glew.h>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>

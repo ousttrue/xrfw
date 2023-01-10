@@ -14,24 +14,6 @@
 #include <xrfw.h>
 
 #include "oglrenderer.h"
-#include "xr_linear.h"
-
-static glm::mat4 projection_matrix(const XrFovf &frustum) {
-  XrMatrix4x4f proj;
-  XrMatrix4x4f_CreateProjectionFov(&proj, GRAPHICS_OPENGL, frustum, 0.05f,
-                                   100.0f);
-  return *((glm::mat4 *)&proj);
-}
-
-static glm::mat4 view_matrix(const XrPosef &pose) {
-  XrMatrix4x4f toView;
-  XrVector3f scale{1.f, 1.f, 1.f};
-  XrMatrix4x4f_CreateTranslationRotationScale(&toView, &pose.position,
-                                              &pose.orientation, &scale);
-  XrMatrix4x4f view;
-  XrMatrix4x4f_InvertRigidBody(&view, &toView);
-  return *((glm::mat4 *)&view);
-}
 
 int main(int argc, char **argv) {
   // OpenGL context
@@ -102,11 +84,8 @@ int main(int argc, char **argv) {
       });
 
       XrTime frameTime;
-      XrView views[2]{
-          {XR_TYPE_VIEW},
-          {XR_TYPE_VIEW},
-      };
-      if (xrfwBeginFrame(&frameTime, views)) {
+      XrfwViewMatrices viewMatrix;
+      if (xrfwBeginFrame(&frameTime, &viewMatrix)) {
         // left
         if (auto swapchainImage =
                 xrfwAcquireSwapchain(0, left, left_width, left_height)) {
@@ -116,9 +95,9 @@ int main(int argc, char **argv) {
                   ->image;
           // render
           renderer.BeginFbo(colorTexture, left_width, left_height);
-          auto projection = projection_matrix(views[0].fov);
-          auto view = view_matrix(views[0].pose);
-          drawable->Render(&projection[0][0], &view[0][0], cubes);
+          // auto projection = projection_matrix(views[0].fov);
+          // auto view = view_matrix(views[0].pose);
+          drawable->Render(viewMatrix.leftProjection, viewMatrix.leftView, cubes);
           renderer.EndFbo();
           xrfwReleaseSwapchain(left);
         }
@@ -131,9 +110,7 @@ int main(int argc, char **argv) {
                   ->image;
           // render
           renderer.BeginFbo(colorTexture, right_width, right_height);
-          auto projection = projection_matrix(views[1].fov);
-          auto view = view_matrix(views[1].pose);
-          drawable->Render(&projection[0][0], &view[0][0], cubes);
+          drawable->Render(viewMatrix.rightProjection, viewMatrix.rightView, cubes);
           renderer.EndFbo();
           xrfwReleaseSwapchain(right);
         }

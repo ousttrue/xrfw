@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../xrfw_sample/xr_linear.h"
+#include "../../src/xr_linear.h"
 #include <corecrt_math.h>
 #include <cstdint>
 #include <glm/ext/matrix_clip_space.hpp>

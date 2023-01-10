@@ -35,7 +35,14 @@ XRFW_API const XrSwapchainImageBaseHeader* xrfwAcquireSwapchain(int i, XrSwapcha
 XRFW_API void xrfwReleaseSwapchain(XrSwapchain swapchain);
 
 XRFW_API XrBool32 xrfwPollEventsIsSessionActive();
-XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrView views[2]);
+
+struct XrfwViewMatrices {
+  float leftProjection[16];
+  float leftView[16];
+  float rightProjection[16];
+  float rightView[16];
+};
+XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrfwViewMatrices *viewMatrix);
 XRFW_API XrBool32 xrfwEndFrame();
 
 //
