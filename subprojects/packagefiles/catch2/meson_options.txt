@@ -1,0 +1,4 @@
+option('tests',
+        type : 'boolean',
+        value : false,
+        description : 'Build Catch2 test programs?')
