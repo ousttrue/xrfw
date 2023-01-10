@@ -1,5 +1,6 @@
 #include "glm/gtx/quaternion.hpp"
 #include "ogldrawable.h"
+#include "openxr/openxr.h"
 #include <windows.h>
 #define XR_USE_GRAPHICS_API_OPENGL
 #include <openxr/openxr_platform.h>
@@ -13,6 +14,21 @@
 #include <xrfw.h>
 
 #include "oglrenderer.h"
+
+static View ToView(const XrView &v) {
+  return {
+      .frustum =
+          {
+              .left = v.fov.angleLeft,
+              .right = v.fov.angleRight,
+              .top = v.fov.angleUp,
+              .bottom = v.fov.angleDown,
+          },
+      .rotation = glm::quat(v.pose.orientation.w, v.pose.orientation.x,
+                            v.pose.orientation.y, v.pose.orientation.z),
+      .position = {v.pose.position.x, v.pose.position.y, v.pose.position.z},
+  };
+}
 
 int main(int argc, char **argv) {
   // OpenGL context
@@ -97,7 +113,7 @@ int main(int argc, char **argv) {
                   ->image;
           // render
           renderer.BeginFbo(colorTexture, left_width, left_height);
-          drawable->Render(views[0], cubes);
+          drawable->Render(ToView(views[0]), cubes);
           renderer.EndFbo();
           xrfwReleaseSwapchain(left);
         }
@@ -110,7 +126,7 @@ int main(int argc, char **argv) {
                   ->image;
           // render
           renderer.BeginFbo(colorTexture, right_width, right_height);
-          drawable->Render(views[1], cubes);
+          drawable->Render(ToView(views[1]), cubes);
           renderer.EndFbo();
           xrfwReleaseSwapchain(right);
         }

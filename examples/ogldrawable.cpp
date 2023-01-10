@@ -1,10 +1,10 @@
 #include "ogldrawable.h"
-#include "openxr/openxr.h"
 #include "xr_linear.h"
 #include <gl/glew.h>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <openxr/openxr.h>
 #include <stdlib.h>
 
 static const char *VertexShaderGlsl = R"_(
@@ -99,18 +99,19 @@ OglDrawable::~OglDrawable() {
   }
 }
 
-void OglDrawable::Render(const XrView &layerView, std::span<Cube> cubes) {
+void OglDrawable::Render(const View &layerView, std::span<Cube> cubes) {
   // Set shaders and uniform variables.
   glUseProgram(m_program);
 
-  const auto &pose = layerView.pose;
+  // const auto &pose = layerView.pose;
   XrMatrix4x4f proj;
-  XrMatrix4x4f_CreateProjectionFov(&proj, GRAPHICS_OPENGL, layerView.fov, 0.05f,
-                                   100.0f);
+  XrMatrix4x4f_CreateProjectionFov(
+      &proj, GRAPHICS_OPENGL, *((XrFovf *)&layerView.frustum), 0.05f, 100.0f);
   XrMatrix4x4f toView;
   XrVector3f scale{1.f, 1.f, 1.f};
-  XrMatrix4x4f_CreateTranslationRotationScale(&toView, &pose.position,
-                                              &pose.orientation, &scale);
+  XrMatrix4x4f_CreateTranslationRotationScale(
+      &toView, (XrVector3f *)&layerView.position,
+      (XrQuaternionf *)&layerView.rotation, &scale);
   XrMatrix4x4f view;
   XrMatrix4x4f_InvertRigidBody(&view, &toView);
   XrMatrix4x4f vp;
@@ -127,7 +128,7 @@ void OglDrawable::Render(const XrView &layerView, std::span<Cube> cubes) {
     auto s = glm::scale(glm::mat4(1), cube.scale);
     auto model = t * r * s;
     XrMatrix4x4f mvp;
-    XrMatrix4x4f_Multiply(&mvp, &vp, (XrMatrix4x4f*)&model);
+    XrMatrix4x4f_Multiply(&mvp, &vp, (XrMatrix4x4f *)&model);
     glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE,
                        reinterpret_cast<const GLfloat *>(&mvp));
 
