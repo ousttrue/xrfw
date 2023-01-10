@@ -1,6 +1,3 @@
-#include "glm/gtx/quaternion.hpp"
-#include "ogldrawable.h"
-#include "openxr/openxr.h"
 #include <windows.h>
 #define XR_USE_GRAPHICS_API_OPENGL
 #include <openxr/openxr_platform.h>
@@ -30,7 +27,6 @@ int main(int argc, char **argv) {
   // Make the window's context current
   glfwMakeContextCurrent(window);
   PLOG_INFO << glGetString(GL_VERSION);
-  OglInitialize();
 
   // require openxr graphics extension
   const char *extensions[] = {
@@ -67,21 +63,12 @@ int main(int argc, char **argv) {
   }
 
   OglRenderer renderer;
-  auto drawable = OglDrawable::Create();
 
   // glfw mainloop
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
     if (xrfwPollEventsIsSessionActive()) {
-
-      // For each locatable space that we want to visualize, render a 25cm cube.
-      std::vector<Cube> cubes;
-      cubes.push_back(Cube{
-          {0, 0, 0, 1},
-          {0, 0, 0},
-          {0.25f, 0.25f, 0.25f},
-      });
 
       XrTime frameTime;
       XrfwViewMatrices viewMatrix;
@@ -93,12 +80,8 @@ int main(int argc, char **argv) {
               reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(
                   swapchainImage)
                   ->image;
-          // render
-          renderer.BeginFbo(colorTexture, left_width, left_height);
-          // auto projection = projection_matrix(views[0].fov);
-          // auto view = view_matrix(views[0].pose);
-          drawable->Render(viewMatrix.leftProjection, viewMatrix.leftView, cubes);
-          renderer.EndFbo();
+          renderer.Render(colorTexture, left_width, left_height,
+                          viewMatrix.leftProjection, viewMatrix.leftView);
           xrfwReleaseSwapchain(left);
         }
         // right
@@ -108,17 +91,15 @@ int main(int argc, char **argv) {
               reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(
                   swapchainImage)
                   ->image;
-          // render
-          renderer.BeginFbo(colorTexture, right_width, right_height);
-          drawable->Render(viewMatrix.rightProjection, viewMatrix.rightView, cubes);
-          renderer.EndFbo();
+          renderer.Render(colorTexture, right_width, right_height,
+                          viewMatrix.rightProjection, viewMatrix.rightView);
           xrfwReleaseSwapchain(right);
         }
       }
       xrfwEndFrame();
     } else {
       // session is not active
-      Sleep(20);
+      Sleep(30);
     }
 
     // glClear(GL_COLOR_BUFFER_BIT);
