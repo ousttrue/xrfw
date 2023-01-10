@@ -3,4 +3,5 @@
         "--compile-commands-dir=${workspaceFolder}/builddir"
     ],
     "mesonbuild.configureOnOpen": false,
+    "testMate.cpp.test.executables": "{prefix}/**/*{test,Test,TEST}*"
 }

@@ -32,4 +32,5 @@ xrfw_dep = declare_dependency(
     link_with: xrfw_lib,
 )
 
-subdir('examples')
+subdir('examples/xrfw_sample')
+subdir('examples/tests')
