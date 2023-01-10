@@ -68,27 +68,27 @@ public:
 
 private:
   void BeginFbo(uint32_t colorTexture, int width, int height) {
-    glBindFramebuffer(GL_FRAMEBUFFER, m_swapchainFramebuffer);
 
     glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+    // Clear swapchain and depth buffer.
+    glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2],
+                 m_clearColor[3]);
+    glClearDepth(1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     glFrontFace(GL_CW);
     glCullFace(GL_BACK);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
-    const uint32_t depthTexture = GetDepthTexture(colorTexture);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           colorTexture, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
-                           depthTexture, 0);
-
-    // Clear swapchain and depth buffer.
-    glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2],
-                 m_clearColor[3]);
-    glClearDepth(1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    if (colorTexture) {
+      glBindFramebuffer(GL_FRAMEBUFFER, m_swapchainFramebuffer);
+      const uint32_t depthTexture = GetDepthTexture(colorTexture);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                             GL_TEXTURE_2D, colorTexture, 0);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                             depthTexture, 0);
+    }
   }
 
   void EndFbo() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
