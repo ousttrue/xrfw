@@ -1,3 +1,4 @@
+#include "glm/gtx/quaternion.hpp"
 #include "ogldrawable.h"
 #include <windows.h>
 #define XR_USE_GRAPHICS_API_OPENGL
@@ -75,7 +76,11 @@ int main(int argc, char **argv) {
 
       // For each locatable space that we want to visualize, render a 25cm cube.
       std::vector<Cube> cubes;
-      cubes.push_back(Cube{{}, {0.25f, 0.25f, 0.25f}});
+      cubes.push_back(Cube{
+          {0, 0, 0, 1},
+          {0, 0, 0},
+          {0.25f, 0.25f, 0.25f},
+      });
 
       XrTime frameTime;
       XrView views[2]{

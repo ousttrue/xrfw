@@ -1,12 +1,15 @@
 #pragma once
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <memory>
 #include <openxr/openxr.h>
 #include <span>
 #include <stdint.h>
 
 struct Cube {
-    XrPosef Pose;
-    XrVector3f Scale;
+  glm::quat rotation;
+  glm::vec3 translation;
+  glm::vec3 scale;
 };
 
 class OglDrawable {

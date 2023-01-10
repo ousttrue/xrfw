@@ -1,8 +1,11 @@
 #include "ogldrawable.h"
+#include "openxr/openxr.h"
 #include "xr_linear.h"
 #include <gl/glew.h>
-#include <stdlib.h>
+#include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <stdlib.h>
 
 static const char *VertexShaderGlsl = R"_(
     #version 410
@@ -119,11 +122,12 @@ void OglDrawable::Render(const XrView &layerView, std::span<Cube> cubes) {
   // Render each cube
   for (const Cube &cube : cubes) {
     // Compute the model-view-projection transform and set it..
-    XrMatrix4x4f model;
-    XrMatrix4x4f_CreateTranslationRotationScale(
-        &model, &cube.Pose.position, &cube.Pose.orientation, &cube.Scale);
+    auto t = glm::translate(glm::mat4(1), cube.translation);
+    auto r = glm::toMat4(cube.rotation);
+    auto s = glm::scale(glm::mat4(1), cube.scale);
+    auto model = t * r * s;
     XrMatrix4x4f mvp;
-    XrMatrix4x4f_Multiply(&mvp, &vp, &model);
+    XrMatrix4x4f_Multiply(&mvp, &vp, (XrMatrix4x4f*)&model);
     glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE,
                        reinterpret_cast<const GLfloat *>(&mvp));
 
