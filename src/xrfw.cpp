@@ -69,8 +69,13 @@ XrFrameState g_frameState{XR_TYPE_FRAME_STATE};
 XrCompositionLayerProjectionView g_projectionLayerViews[2] = {};
 XrCompositionLayerProjection g_projection = {};
 std::list<std::vector<XrSwapchainImageOpenGLKHR>> g_swapchainImageBuffers;
-std::unordered_map<XrSwapchain, std::vector<XrSwapchainImageBaseHeader *>>
-    g_swapchainImages;
+struct SwapchainInfo {
+  uint32_t index;
+  int width;
+  int height;
+  std::vector<XrSwapchainImageBaseHeader *> images;
+};
+std::unordered_map<XrSwapchain, SwapchainInfo> g_swapchainImages;
 
 XRFW_API XrInstance xrfwGetInstance() { return g_instance; }
 
@@ -189,7 +194,8 @@ XRFW_API XrInstance xrfwCreateInstance(const char **extensionNames,
 
 XRFW_API void xrfwDestroyInstance() { xrDestroyInstance(g_instance); }
 
-XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
+XRFW_API XrSession xrfwCreateOpenGLWin32SessionAndSwapchain(
+    XrfwSwapchains *swapchains, HDC hDC, HGLRC hGLRC) {
 
   XrGraphicsBindingOpenGLWin32KHR graphicsBindingGL = {
       .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
@@ -317,6 +323,24 @@ XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC) {
       PLOG_FATAL << result;
       return {};
     }
+  }
+
+  // swapchain
+  XrViewConfigurationView viewConfigurationViews[2];
+  if (!xrfwGetViewConfigurationViews(viewConfigurationViews, 2)) {
+    return {};
+  }
+  swapchains->left =
+      xrfwCreateSwapchain(viewConfigurationViews[0], &swapchains->leftWidth,
+                          &swapchains->leftHeight);
+  if (!swapchains->left) {
+    return {};
+  }
+  swapchains->right =
+      xrfwCreateSwapchain(viewConfigurationViews[1], &swapchains->rightWidth,
+                          &swapchains->rightHeight);
+  if (!swapchains->right) {
+    return {};
   }
 
   return g_session;
@@ -474,8 +498,12 @@ xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
     return {};
   }
 
-  g_swapchainImages.insert(
-      std::make_pair(swapchain, std::move(swapchainImages)));
+  auto index = (uint32_t)g_swapchainImages.size();
+  g_swapchainImages.insert(std::make_pair(
+      swapchain,
+      SwapchainInfo{index, static_cast<int>(swapchainCreateInfo.width),
+                    static_cast<int>(swapchainCreateInfo.height),
+                    swapchainImages}));
 
   *width = swapchainCreateInfo.width;
   *height = swapchainCreateInfo.height;
@@ -483,13 +511,18 @@ xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
 }
 
 XRFW_API const XrSwapchainImageBaseHeader *
-xrfwAcquireSwapchain(int i, XrSwapchain swapchain, int width, int height) {
-  g_projectionLayerViews[i].subImage = {
+xrfwAcquireSwapchain(XrSwapchain swapchain) {
+  auto found = g_swapchainImages.find(swapchain);
+  if (found == g_swapchainImages.end()) {
+    return {};
+  }
+  auto &info = found->second;
+  g_projectionLayerViews[info.index].subImage = {
       .swapchain = swapchain,
       .imageRect =
           {
               .offset = {0, 0},
-              .extent = {width, height},
+              .extent = {info.width, info.height},
           },
   };
 
@@ -512,7 +545,7 @@ xrfwAcquireSwapchain(int i, XrSwapchain swapchain, int width, int height) {
     return {};
   }
 
-  return g_swapchainImages[swapchain][swapchainImageIndex];
+  return g_swapchainImages[swapchain].images[swapchainImageIndex];
 }
 
 XRFW_API void xrfwReleaseSwapchain(XrSwapchain swapchain) {

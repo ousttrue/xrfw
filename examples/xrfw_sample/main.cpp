@@ -37,29 +37,13 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // session from graphics
-  auto session = xrfwCreateOpenGLWin32Session(GetDC(glfwGetWin32Window(window)),
-                                              glfwGetWGLContext(window));
+  // session and swapchains from graphics
+  XrfwSwapchains swapchains;
+  auto session = xrfwCreateOpenGLWin32SessionAndSwapchain(
+      &swapchains, GetDC(glfwGetWin32Window(window)),
+      glfwGetWGLContext(window));
   if (!session) {
     return 2;
-  }
-
-  // swapchain
-  XrViewConfigurationView viewConfigurationViews[2];
-  if (!xrfwGetViewConfigurationViews(viewConfigurationViews, 2)) {
-    return 3;
-  }
-  int left_width, left_height;
-  auto left =
-      xrfwCreateSwapchain(viewConfigurationViews[0], &left_width, &left_height);
-  if (!left) {
-    return 4;
-  }
-  int right_width, right_height;
-  auto right = xrfwCreateSwapchain(viewConfigurationViews[1], &right_width,
-                                   &right_height);
-  if (!right) {
-    return 5;
   }
 
   OglRenderer renderer;
@@ -68,37 +52,37 @@ int main(int argc, char **argv) {
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
+    // OpenXR handling
     if (xrfwPollEventsIsSessionActive()) {
-
       XrTime frameTime;
       XrfwViewMatrices viewMatrix;
       if (xrfwBeginFrame(&frameTime, &viewMatrix)) {
         // left
-        if (auto swapchainImage =
-                xrfwAcquireSwapchain(0, left, left_width, left_height)) {
+        if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.left)) {
           const uint32_t colorTexture =
               reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(
                   swapchainImage)
                   ->image;
-          renderer.Render(colorTexture, left_width, left_height,
-                          viewMatrix.leftProjection, viewMatrix.leftView);
-          xrfwReleaseSwapchain(left);
+          renderer.Render(colorTexture, swapchains.leftWidth,
+                          swapchains.leftHeight, viewMatrix.leftProjection,
+                          viewMatrix.leftView);
+          xrfwReleaseSwapchain(swapchains.left);
         }
         // right
-        if (auto swapchainImage =
-                xrfwAcquireSwapchain(1, right, right_width, right_height)) {
+        if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.right)) {
           const uint32_t colorTexture =
               reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(
                   swapchainImage)
                   ->image;
-          renderer.Render(colorTexture, right_width, right_height,
-                          viewMatrix.rightProjection, viewMatrix.rightView);
-          xrfwReleaseSwapchain(right);
+          renderer.Render(colorTexture, swapchains.rightWidth,
+                          swapchains.rightHeight, viewMatrix.rightProjection,
+                          viewMatrix.rightView);
+          xrfwReleaseSwapchain(swapchains.right);
         }
       }
       xrfwEndFrame();
     } else {
-      // session is not active
+      // XrSession is not active
       Sleep(30);
     }
 

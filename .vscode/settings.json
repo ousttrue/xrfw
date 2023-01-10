@@ -4,5 +4,11 @@
         "-header-insertion=never",
     ],
     "mesonbuild.configureOnOpen": false,
-    "testMate.cpp.test.executables": "{prefix}/**/*{test,Test,TEST}*"
+    "testMate.cpp.test.executables": "{prefix}/**/*{test,Test,TEST}*",
+    "cSpell.words": [
+        "xrfw",
+        "openxr",
+        "swapchain",
+        "swapchains",
+    ]
 }

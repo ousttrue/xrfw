@@ -21,8 +21,16 @@ XRFW_API void xrfwDestroyInstance();
 
 XRFW_API XrInstance xrfwGetInstance();
 
+struct XrfwSwapchains {
+  XrSwapchain left;
+  int leftWidth;
+  int leftHeight;
+  XrSwapchain right;
+  int rightWidth;
+  int rightHeight;
+};
 #ifdef XR_USE_PLATFORM_WIN32
-XRFW_API XrSession xrfwCreateOpenGLWin32Session(HDC hDC, HGLRC hGLRC);
+XRFW_API XrSession xrfwCreateOpenGLWin32SessionAndSwapchain(XrfwSwapchains*views, HDC hDC, HGLRC hGLRC);
 #endif
 
 XRFW_API void xrfwDestroySession(void *session);
@@ -31,7 +39,7 @@ XRFW_API XrBool32 xrfwGetViewConfigurationViews(
     XrViewConfigurationView *viewConfigurationViews, uint32_t viewCount);
 XRFW_API XrSwapchain
 xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView, int *width, int *height);
-XRFW_API const XrSwapchainImageBaseHeader* xrfwAcquireSwapchain(int i, XrSwapchain swapchain, int width, int height);
+XRFW_API const XrSwapchainImageBaseHeader* xrfwAcquireSwapchain(XrSwapchain swapchain);
 XRFW_API void xrfwReleaseSwapchain(XrSwapchain swapchain);
 
 XRFW_API XrBool32 xrfwPollEventsIsSessionActive();
