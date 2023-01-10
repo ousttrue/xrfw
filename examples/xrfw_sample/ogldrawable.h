@@ -19,12 +19,6 @@ struct Frustum {
   float bottom;
 };
 
-struct View {
-  Frustum frustum;
-  glm::quat rotation;
-  glm::vec3 position;
-};
-
 class OglDrawable {
   uint32_t m_program{0};
   uint32_t m_modelViewProjectionUniformLocation{0};
@@ -42,5 +36,6 @@ public:
   OglDrawable(const OglDrawable &) = delete;
   OglDrawable &operator=(const OglDrawable &) = delete;
   static std::shared_ptr<OglDrawable> Create();
-  void Render(const View &view, std::span<Cube> cubes);
+  void Render(const float projection[16], const float view[16],
+              std::span<Cube> cubes);
 };

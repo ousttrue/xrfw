@@ -14,20 +14,23 @@
 #include <xrfw.h>
 
 #include "oglrenderer.h"
+#include "xr_linear.h"
 
-static View ToView(const XrView &v) {
-  return {
-      .frustum =
-          {
-              .left = v.fov.angleLeft,
-              .right = v.fov.angleRight,
-              .top = v.fov.angleUp,
-              .bottom = v.fov.angleDown,
-          },
-      .rotation = glm::quat(v.pose.orientation.w, v.pose.orientation.x,
-                            v.pose.orientation.y, v.pose.orientation.z),
-      .position = {v.pose.position.x, v.pose.position.y, v.pose.position.z},
-  };
+static glm::mat4 projection_matrix(const XrFovf &frustum) {
+  XrMatrix4x4f proj;
+  XrMatrix4x4f_CreateProjectionFov(&proj, GRAPHICS_OPENGL, frustum, 0.05f,
+                                   100.0f);
+  return *((glm::mat4 *)&proj);
+}
+
+static glm::mat4 view_matrix(const XrPosef &pose) {
+  XrMatrix4x4f toView;
+  XrVector3f scale{1.f, 1.f, 1.f};
+  XrMatrix4x4f_CreateTranslationRotationScale(&toView, &pose.position,
+                                              &pose.orientation, &scale);
+  XrMatrix4x4f view;
+  XrMatrix4x4f_InvertRigidBody(&view, &toView);
+  return *((glm::mat4 *)&view);
 }
 
 int main(int argc, char **argv) {
@@ -113,7 +116,9 @@ int main(int argc, char **argv) {
                   ->image;
           // render
           renderer.BeginFbo(colorTexture, left_width, left_height);
-          drawable->Render(ToView(views[0]), cubes);
+          auto projection = projection_matrix(views[0].fov);
+          auto view = view_matrix(views[0].pose);
+          drawable->Render(&projection[0][0], &view[0][0], cubes);
           renderer.EndFbo();
           xrfwReleaseSwapchain(left);
         }
@@ -126,7 +131,9 @@ int main(int argc, char **argv) {
                   ->image;
           // render
           renderer.BeginFbo(colorTexture, right_width, right_height);
-          drawable->Render(ToView(views[1]), cubes);
+          auto projection = projection_matrix(views[1].fov);
+          auto view = view_matrix(views[1].pose);
+          drawable->Render(&projection[0][0], &view[0][0], cubes);
           renderer.EndFbo();
           xrfwReleaseSwapchain(right);
         }

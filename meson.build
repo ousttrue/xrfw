@@ -34,3 +34,5 @@ xrfw_dep = declare_dependency(
 
 subdir('examples/xrfw_sample')
 subdir('examples/tests')
+
+meson.override_dependency('xrfw', xrfw_dep)

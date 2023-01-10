@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../xrfw_sample/xr_linear.h"
+#include <corecrt_math.h>
 #include <cstdint>
+#include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <numbers>
 #include <openxr/openxr.h>
@@ -66,7 +68,7 @@ inline glm::mat4 toGlm(const XrFovf &fov, float nearZ = 0.01f,
   result[2] = 0;
   result[6] = 0;
   result[10] = -(farZ + offsetZ) / (farZ - nearZ);
-  result[14] = - 2 * (farZ * (nearZ + offsetZ)) / (farZ - nearZ);
+  result[14] = -2 * (farZ * (nearZ + offsetZ)) / (farZ - nearZ);
 
   result[3] = 0;
   result[7] = 0;
@@ -93,7 +95,7 @@ TEST_CASE("projection", "[matrix]") {
       .angleLeft = deg2rad(-15),
       .angleRight = deg2rad(15),
       .angleUp = deg2rad(15),
-      .angleDown = -deg2rad(15),
+      .angleDown = deg2rad(-15),
   };
   XrMatrix4x4f proj;
   XrMatrix4x4f_CreateProjectionFov(&proj, GRAPHICS_OPENGL, frustum, 0.05f,
@@ -102,4 +104,11 @@ TEST_CASE("projection", "[matrix]") {
   auto glm_proj = toGlm(frustum, 0.05f, 100.0f);
 
   REQUIRE(CompareMatrix(std::span{proj.m, 16}, std::span{&glm_proj[0][0], 16}));
+
+  auto glm_proj2 = glm::frustumRH_NO(
+      tanf(frustum.angleLeft) * 0.05f, tanf(frustum.angleRight) * 0.05f,
+      tanf(frustum.angleDown) * 0.05f, tanf(frustum.angleUp) * 0.05f, 0.05f,
+      100.0f);
+  REQUIRE(
+      CompareMatrix(std::span{proj.m, 16}, std::span{&glm_proj2[0][0], 16}));
 }

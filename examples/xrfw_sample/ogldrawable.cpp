@@ -99,23 +99,14 @@ OglDrawable::~OglDrawable() {
   }
 }
 
-void OglDrawable::Render(const View &layerView, std::span<Cube> cubes) {
+void OglDrawable::Render(const float projection[16], const float view[16],
+                         std::span<Cube> cubes) {
   // Set shaders and uniform variables.
   glUseProgram(m_program);
 
-  // const auto &pose = layerView.pose;
-  XrMatrix4x4f proj;
-  XrMatrix4x4f_CreateProjectionFov(
-      &proj, GRAPHICS_OPENGL, *((XrFovf *)&layerView.frustum), 0.05f, 100.0f);
-  XrMatrix4x4f toView;
-  XrVector3f scale{1.f, 1.f, 1.f};
-  XrMatrix4x4f_CreateTranslationRotationScale(
-      &toView, (XrVector3f *)&layerView.position,
-      (XrQuaternionf *)&layerView.rotation, &scale);
-  XrMatrix4x4f view;
-  XrMatrix4x4f_InvertRigidBody(&view, &toView);
-  XrMatrix4x4f vp;
-  XrMatrix4x4f_Multiply(&vp, &proj, &view);
+  auto &v = *((glm::mat4 *)view);
+  auto &p = *((glm::mat4 *)projection);
+  auto vp = p * v;
 
   // Set cube primitive data.
   glBindVertexArray(m_vao);
@@ -127,8 +118,7 @@ void OglDrawable::Render(const View &layerView, std::span<Cube> cubes) {
     auto r = glm::toMat4(cube.rotation);
     auto s = glm::scale(glm::mat4(1), cube.scale);
     auto model = t * r * s;
-    XrMatrix4x4f mvp;
-    XrMatrix4x4f_Multiply(&mvp, &vp, (XrMatrix4x4f *)&model);
+    auto mvp = vp * model;
     glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE,
                        reinterpret_cast<const GLfloat *>(&mvp));
 
