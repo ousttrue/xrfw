@@ -30,6 +30,7 @@ xrfw_lib = library('xrfw', [
 xrfw_dep = declare_dependency(
     include_directories: xrfw_inc,
     link_with: xrfw_lib,
+    dependencies: [plog_dep, openxr_loader_dep],
 )
 
 subdir('examples/xrfw_sample')
