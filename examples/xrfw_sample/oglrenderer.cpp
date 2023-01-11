@@ -68,6 +68,14 @@ public:
 
 private:
   void BeginFbo(uint32_t colorTexture, int width, int height) {
+    if (colorTexture) {
+      glBindFramebuffer(GL_FRAMEBUFFER, m_swapchainFramebuffer);
+      const uint32_t depthTexture = GetDepthTexture(colorTexture);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                             GL_TEXTURE_2D, colorTexture, 0);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                             depthTexture, 0);
+    }
 
     glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
     // Clear swapchain and depth buffer.
@@ -80,15 +88,6 @@ private:
     glCullFace(GL_BACK);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
-
-    if (colorTexture) {
-      glBindFramebuffer(GL_FRAMEBUFFER, m_swapchainFramebuffer);
-      const uint32_t depthTexture = GetDepthTexture(colorTexture);
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                             GL_TEXTURE_2D, colorTexture, 0);
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
-                             depthTexture, 0);
-    }
   }
 
   void EndFbo() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
