@@ -1,6 +1,7 @@
 # for android build
 cmake_minimum_required(VERSION 3.22.1)
 project(xrfw)
+set(CMAKE_CXX_STANDARD 20)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -8,6 +9,12 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/SergiusTheBest/plog
   GIT_TAG 1.1.9)
 FetchContent_MakeAvailable(plog)
+
+FetchContent_Declare(
+  glm
+  GIT_REPOSITORY https://github.com/g-truc/glm
+  GIT_TAG 0.9.9.8)
+FetchContent_MakeAvailable(plog glm)
 
 FetchContent_Populate(
   openxrsdk
@@ -31,8 +38,17 @@ set_property(
   PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${openxrsdk_SOURCE_DIR}/include
            ${MOBILE_SDK_DIR}/OpenXR/include)
 
+#
+# xrfw
+#
 add_library(xrfw ../../src/xrfw.cpp)
 target_include_directories(xrfw PUBLIC ../../include)
-target_link_libraries(xrfw PRIVATE plog openxr_loader)
+target_link_libraries(xrfw PUBLIC plog openxr_loader)
 target_compile_definitions(xrfw PUBLIC XR_USE_GRAPHICS_API_OPENGL_ES
                                        XR_USE_PLATFORM_ANDROID)
+
+#
+# xrfw_sample
+#
+add_library(xrfw_sample SHARED main.cpp)
+target_link_libraries(xrfw_sample PRIVATE xrfw glm::glm)
