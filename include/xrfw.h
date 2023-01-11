@@ -34,6 +34,7 @@ XRFW_API XrSession xrfwCreateOpenGLWin32SessionAndSwapchain(XrfwSwapchains*views
 #endif
 
 XRFW_API void xrfwDestroySession(void *session);
+XRFW_API XrSpace xrfwAppSpace();
 
 XRFW_API XrBool32 xrfwGetViewConfigurationViews(
     XrViewConfigurationView *viewConfigurationViews, uint32_t viewCount);

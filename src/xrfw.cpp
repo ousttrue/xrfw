@@ -351,6 +351,8 @@ XRFW_API void xrfwDestroySession(void *session) {
   xrDestroySession((XrSession)session);
 }
 
+XRFW_API XrSpace xrfwAppSpace() { return g_currentSpace; }
+
 XRFW_API XrBool32 xrfwGetViewConfigurationViews(
     XrViewConfigurationView *viewConfigurationViews, uint32_t viewCount) {
 
