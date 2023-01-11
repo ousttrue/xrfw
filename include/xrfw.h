@@ -1,25 +1,11 @@
 #pragma once
-#include <string_view>
-
-#ifdef XR_USE_PLATFORM_WIN32
-#define WINDOWS_LEAN_AND_MEAN
-#include <Windows.h>
-#endif
-
 #include <openxr/openxr.h>
 #include <stdint.h>
+#include <string_view>
 
-#ifdef XRFW_BUILD
-#define XRFW_API extern "C" __declspec(dllexport)
-#else
-#define XRFW_API extern "C" __declspec(dllimport)
-#endif
-
-XRFW_API XrInstance xrfwCreateInstance(const char **extensionNames,
-                                       uint32_t extensionCount);
-XRFW_API void xrfwDestroyInstance();
-
-XRFW_API XrInstance xrfwGetInstance();
+// App only supports the primary stereo view config.
+const XrViewConfigurationType g_supportedViewConfigType =
+    XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 
 struct XrfwSwapchains {
   XrSwapchain left;
@@ -29,9 +15,22 @@ struct XrfwSwapchains {
   int rightWidth;
   int rightHeight;
 };
+
+bool _xrfwGraphicsRequirements();
+
 #ifdef XR_USE_PLATFORM_WIN32
-XRFW_API XrSession xrfwCreateOpenGLWin32SessionAndSwapchain(XrfwSwapchains*views, HDC hDC, HGLRC hGLRC);
+#include "xrfw_win32.h"
+#elif XR_USE_PLATFORM_ANDROID
+#include "xrfw_android.h"
+#else
+#error "XR_USE_PLATFORM required"
 #endif
+
+XRFW_API XrInstance xrfwCreateInstance(const char **extensionNames,
+                                       uint32_t extensionCount);
+XRFW_API void xrfwDestroyInstance();
+
+XRFW_API XrInstance xrfwGetInstance();
 
 XRFW_API void xrfwDestroySession(void *session);
 XRFW_API XrSpace xrfwAppSpace();
@@ -39,8 +38,10 @@ XRFW_API XrSpace xrfwAppSpace();
 XRFW_API XrBool32 xrfwGetViewConfigurationViews(
     XrViewConfigurationView *viewConfigurationViews, uint32_t viewCount);
 XRFW_API XrSwapchain
-xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView, int *width, int *height);
-XRFW_API const XrSwapchainImageBaseHeader* xrfwAcquireSwapchain(XrSwapchain swapchain);
+xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
+                    int *width, int *height);
+XRFW_API const XrSwapchainImageBaseHeader *
+xrfwAcquireSwapchain(XrSwapchain swapchain);
 XRFW_API void xrfwReleaseSwapchain(XrSwapchain swapchain);
 
 XRFW_API XrBool32 xrfwPollEventsIsSessionActive();

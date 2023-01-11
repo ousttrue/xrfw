@@ -20,7 +20,8 @@ endif
 
 xrfw_inc = include_directories('include')
 xrfw_lib = library('xrfw', [
-    'src/xrfw.cpp'
+    'src/xrfw.cpp',
+    'src/xrfw_win32.cpp',
 ],
     install: true,
     include_directories: xrfw_inc,

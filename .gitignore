@@ -4,3 +4,5 @@
 !/subprojects/*.wrap
 !/subprojects/packagefiles
 /.meson-subproject-wrap-hash.txt
+/thirdparty/ovr_openxr_mobile_sdk
+/build/
