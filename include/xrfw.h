@@ -1,11 +1,9 @@
 #pragma once
 #include <openxr/openxr.h>
+#include <span>
 #include <stdint.h>
 #include <string_view>
-
-// App only supports the primary stereo view config.
-const XrViewConfigurationType g_supportedViewConfigType =
-    XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+#include <vector>
 
 struct XrfwSwapchains {
   XrSwapchain left;
@@ -16,7 +14,13 @@ struct XrfwSwapchains {
   int rightHeight;
 };
 
-bool _xrfwGraphicsRequirements();
+bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId);
+XrSession _xrfwCreateSession(XrfwSwapchains *swapchains, const void *next);
+std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session);
+int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats);
+std::vector<XrSwapchainImageBaseHeader *>
+_xrfwAllocateSwapchainImageStructs(uint32_t capacity,
+                                   const XrSwapchainCreateInfo &);
 
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw_win32.h"
