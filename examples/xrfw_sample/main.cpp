@@ -1,12 +1,3 @@
-#include <windows.h>
-#define XR_USE_GRAPHICS_API_OPENGL
-#include <openxr/openxr_platform.h>
-
-#include <GLFW/glfw3.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#define GLFW_EXPOSE_NATIVE_WGL
-#include <Glfw/glfw3native.h>
-
 #include <plog/Log.h>
 #include <xrfw.h>
 
@@ -15,6 +6,18 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 #include <numbers>
+
+#ifdef XR_USE_PLATFORM_WIN32
+//
+// windows
+//
+#include <openxr/openxr_platform.h>
+#include <windows.h>
+
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+#include <Glfw/glfw3native.h>
 
 struct TurnTable {
   glm::vec3 shift = {0, 0, -5};
@@ -86,53 +89,93 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   camera->update();
 }
 
-int main(int argc, char **argv) {
-  // OpenGL context
-  if (!glfwInit()) {
-    return 11;
-  }
-
-  // Create a windowed mode window and its OpenGL context
-  auto window = glfwCreateWindow(640, 480, "Hello xrfw", nullptr, nullptr);
-  if (!window) {
-    glfwTerminate();
-    return 12;
-  }
-  // Make the window's context current
-  glfwMakeContextCurrent(window);
-  PLOG_INFO << glGetString(GL_VERSION);
-
+struct Platform {
+  GLFWwindow *window_ = nullptr;
   TurnTable camera;
-  glfwGetFramebufferSize(window, &camera.width, &camera.height);
-  camera.update();
-  glfwSetWindowUserPointer(window, &camera);
-  glfwSetCursorPosCallback(window, cursor_position_callback);
-  glfwSetMouseButtonCallback(window, mouse_button_callback);
-  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
   // require openxr graphics extension
-  const char *extensions[] = {
+  const char *extensions[1] = {
       XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
   };
-  auto instance = xrfwCreateInstance(extensions, 1);
-  if (!instance) {
+  XrGraphicsBindingOpenGLWin32KHR graphicsBindingGL_ = {};
+
+  Platform() {
+    if (!glfwInit()) {
+      PLOG_FATAL << "glfwInit";
+      throw std::runtime_error("glfwInit");
+    }
+  }
+  ~Platform() { glfwTerminate(); }
+  bool InitializeGraphics() {
+    // Create a windowed mode window and its OpenGL context
+    window_ = glfwCreateWindow(640, 480, "Hello xrfw", nullptr, nullptr);
+    if (!window_) {
+      return false;
+    }
+    // Make the window's context current
+    glfwMakeContextCurrent(window_);
+    PLOG_INFO << glGetString(GL_VERSION);
+
+    glfwGetFramebufferSize(window_, &camera.width, &camera.height);
+    camera.update();
+    glfwSetWindowUserPointer(window_, &camera);
+    glfwSetCursorPosCallback(window_, cursor_position_callback);
+    glfwSetMouseButtonCallback(window_, mouse_button_callback);
+    glfwSetFramebufferSizeCallback(window_, framebuffer_size_callback);
+
+    graphicsBindingGL_ = {
+        .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
+        .next = nullptr,
+        .hDC = GetDC(glfwGetWin32Window(window_)),
+        .hGLRC = glfwGetWGLContext(window_),
+    };
+
+    return true;
+  }
+
+  bool BeginFrame() {
+    if (glfwWindowShouldClose(window_)) {
+      return false;
+    }
+    glfwPollEvents();
+    return true;
+  }
+
+  void EndFrame(OglRenderer &renderer) {
+    // glClear(GL_COLOR_BUFFER_BIT);
+    renderer.Render(0, camera.width, camera.height, camera.projection,
+                    camera.view);
+    glfwSwapBuffers(window_);
+  }
+};
+#elif XR_USE_PLATFORM_ANDROID
+//
+// Android
+//
+#endif
+
+int start() {
+  Platform platform;
+  if (!platform.InitializeGraphics()) {
     return 1;
+  }
+
+  // instance
+  auto instance = xrfwCreateInstance(platform.extensions, 1);
+  if (!instance) {
+    return 2;
   }
 
   // session and swapchains from graphics
   XrfwSwapchains swapchains;
-  auto session = xrfwCreateOpenGLWin32SessionAndSwapchain(
-      &swapchains, GetDC(glfwGetWin32Window(window)),
-      glfwGetWGLContext(window));
+  auto session = xrfwCreateSession(&swapchains, &platform.graphicsBindingGL_);
   if (!session) {
-    return 2;
+    return 3;
   }
 
   OglRenderer renderer;
 
   // glfw mainloop
-  while (!glfwWindowShouldClose(window)) {
-    glfwPollEvents();
+  while (platform.BeginFrame()) {
 
     // OpenXR handling
     if (xrfwPollEventsIsSessionActive()) {
@@ -168,14 +211,12 @@ int main(int argc, char **argv) {
       Sleep(30);
     }
 
-    // glClear(GL_COLOR_BUFFER_BIT);
-    renderer.Render(0, camera.width, camera.height, camera.projection,
-                    camera.view);
-    glfwSwapBuffers(window);
+    platform.EndFrame(renderer);
   }
 
   xrfwDestroySession(session);
   xrfwDestroyInstance();
-  glfwTerminate();
   return 0;
 }
+
+int main(int argc, char **argv) { return start(); }

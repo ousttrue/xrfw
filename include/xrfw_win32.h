@@ -7,5 +7,3 @@
 #else
 #define XRFW_API extern "C" __declspec(dllimport)
 #endif
-
-XRFW_API XrSession xrfwCreateOpenGLWin32SessionAndSwapchain(XrfwSwapchains*views, HDC hDC, HGLRC hGLRC);

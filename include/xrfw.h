@@ -15,7 +15,6 @@ struct XrfwSwapchains {
 };
 
 bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId);
-XrSession _xrfwCreateSession(XrfwSwapchains *swapchains, const void *next);
 std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session);
 int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats);
 std::vector<XrSwapchainImageBaseHeader *>
@@ -33,9 +32,9 @@ _xrfwAllocateSwapchainImageStructs(uint32_t capacity,
 XRFW_API XrInstance xrfwCreateInstance(const char **extensionNames,
                                        uint32_t extensionCount);
 XRFW_API void xrfwDestroyInstance();
-
 XRFW_API XrInstance xrfwGetInstance();
 
+XRFW_API XrSession xrfwCreateSession(XrfwSwapchains *swapchains, const void *next);
 XRFW_API void xrfwDestroySession(void *session);
 XRFW_API XrSpace xrfwAppSpace();
 

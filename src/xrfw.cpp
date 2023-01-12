@@ -201,7 +201,7 @@ XRFW_API XrInstance xrfwCreateInstance(const char **extensionNames,
 
 XRFW_API void xrfwDestroyInstance() { xrDestroyInstance(g_instance); }
 
-XrSession _xrfwCreateSession(XrfwSwapchains *swapchains, const void *next) {
+XRFW_API XrSession xrfwCreateSession(XrfwSwapchains *swapchains, const void *next) {
   XrSessionCreateInfo sessionCreateInfo = {
       .type = XR_TYPE_SESSION_CREATE_INFO,
       .next = next, // &graphicsBindingGL,

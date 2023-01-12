@@ -33,19 +33,6 @@ bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId) {
   return true;
 }
 
-XRFW_API XrSession xrfwCreateOpenGLWin32SessionAndSwapchain(
-    XrfwSwapchains *swapchains, HDC hDC, HGLRC hGLRC) {
-
-  XrGraphicsBindingOpenGLWin32KHR graphicsBindingGL = {
-      .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
-      .next = nullptr,
-      .hDC = hDC,
-      .hGLRC = hGLRC,
-  };
-
-  return _xrfwCreateSession(swapchains, &graphicsBindingGL);
-}
-
 int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats) {
 
   // List of supported color swapchain formats.
