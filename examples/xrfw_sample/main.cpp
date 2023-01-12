@@ -3,14 +3,14 @@
 
 #include "platform.h"
 
-int start() {
-  Platform platform;
+int start(struct android_app *state = nullptr) {
+  Platform platform(state);
   if (!platform.InitializeGraphics()) {
     return 1;
   }
 
   // instance
-  auto instance = xrfwCreateInstance(platform.Extensions(), 1);
+  auto instance = xrfwCreateInstance(platform.InstanceNext(), platform.Extensions(), 1);
   if (!instance) {
     return 2;
   }
@@ -66,7 +66,7 @@ int start() {
 #ifdef XR_USE_PLATFORM_WIN32
 int main(int argc, char **argv) { return start(); }
 #elif XR_USE_PLATFORM_ANDROID
-void android_main(struct android_app *state) { start(); }
+void android_main(struct android_app *state) { start(state); }
 #else
 error("XR_USE_PLATFORM_WIN32 or XR_USE_PLATFORM_ANDROID required")
 #endif

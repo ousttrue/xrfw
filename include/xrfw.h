@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string_view>
 #include <vector>
+#include <ostream>
 
 struct XrfwSwapchains {
   XrSwapchain left;
@@ -14,6 +15,7 @@ struct XrfwSwapchains {
   int rightHeight;
 };
 
+void _xrfwInitLogger();
 bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId);
 std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session);
 int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats);
@@ -29,7 +31,8 @@ _xrfwAllocateSwapchainImageStructs(uint32_t capacity,
 #error "XR_USE_PLATFORM required"
 #endif
 
-XRFW_API XrInstance xrfwCreateInstance(const char *const *extensionNames,
+XRFW_API XrInstance xrfwCreateInstance(const void *next,
+                                       const char *const *extensionNames,
                                        uint32_t extensionCount);
 XRFW_API void xrfwDestroyInstance();
 XRFW_API XrInstance xrfwGetInstance();

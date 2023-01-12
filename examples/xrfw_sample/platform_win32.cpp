@@ -1,4 +1,5 @@
 #include "platform.h"
+#ifdef XR_USE_PLATFORM_WIN32
 #include <windows.h>
 
 #include <openxr/openxr_platform.h>
@@ -143,7 +144,7 @@ struct PlatformImpl {
   }
 };
 
-Platform::Platform() : impl_(new PlatformImpl) {}
+Platform::Platform(struct android_app *) : impl_(new PlatformImpl) {}
 Platform::~Platform() { delete impl_; }
 bool Platform::InitializeGraphics() { return impl_->InitializeGraphics(); }
 bool Platform::BeginFrame() { return impl_->BeginFrame(); }
@@ -158,3 +159,4 @@ const char *const *Platform::Extensions() const { return impl_->extensions; }
 const void *Platform::GraphicsBinding() const {
   return &impl_->graphicsBindingGL_;
 }
+#endif

@@ -1,45 +1,7 @@
 #ifdef XR_USE_PLATFORM_WIN32
-#define PLOG_EXPORT
 #endif
 
-#include <iomanip>
-#include <plog/Appenders/ColorConsoleAppender.h>
-#include <plog/Init.h>
 #include <plog/Log.h>
-
-namespace plog {
-class MyFormatter {
-public:
-  static util::nstring header() // This method returns a header for a new file.
-                                // In our case it is empty.
-  {
-    return util::nstring();
-  }
-
-  static util::nstring
-  format(const Record &record) // This method returns a string from a record.
-  {
-    tm t;
-    util::localtime_s(&t, &record.getTime().time);
-
-    util::nostringstream ss;
-    ss << "["
-       // hour
-       << std::setfill(PLOG_NSTR('0')) << std::setw(2) << t.tm_hour
-       << PLOG_NSTR(":")
-       // min
-       << std::setfill(PLOG_NSTR('0')) << std::setw(2) << t.tm_min
-       << PLOG_NSTR(".")
-       // sec
-       << std::setfill(PLOG_NSTR('0')) << std::setw(2) << t.tm_sec
-       << "]"
-       // message
-       << record.getFunc() << ": " << record.getMessage() << "\n";
-
-    return ss.str();
-  }
-};
-} // namespace plog
 
 #include "xr_linear.h"
 #include <algorithm>
@@ -102,11 +64,10 @@ std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session) {
 
 XRFW_API XrInstance xrfwGetInstance() { return g_instance; }
 
-XRFW_API XrInstance xrfwCreateInstance(const char *const *extensionNames,
+XRFW_API XrInstance xrfwCreateInstance(const void *next,
+                                       const char *const *extensionNames,
                                        uint32_t extensionCount) {
-
-  static plog::ColorConsoleAppender<plog::MyFormatter> consoleAppender;
-  plog::init(plog::debug, &consoleAppender);
+  _xrfwInitLogger();
 
   // instance
   XrApplicationInfo appInfo{
@@ -119,7 +80,7 @@ XRFW_API XrInstance xrfwCreateInstance(const char *const *extensionNames,
 
   XrInstanceCreateInfo instanceCreateInfo{
       .type = XR_TYPE_INSTANCE_CREATE_INFO,
-      .next = nullptr,
+      .next = next,
       .createFlags = 0,
       .applicationInfo = appInfo,
       .enabledApiLayerCount = 0,

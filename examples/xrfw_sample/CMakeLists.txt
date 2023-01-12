@@ -39,16 +39,27 @@ set_property(
            ${MOBILE_SDK_DIR}/OpenXR/include)
 
 #
+# native_app_glue as a static lib
+#
+set(TARGET_NAME android_native_app_glue)
+set(ANDROID_NATIVE_APP_GLUE
+    ${CMAKE_ANDROID_NDK}/sources/android/native_app_glue)
+add_library(${TARGET_NAME} STATIC
+            ${ANDROID_NATIVE_APP_GLUE}/android_native_app_glue.c)
+target_include_directories(${TARGET_NAME} PUBLIC ${ANDROID_NATIVE_APP_GLUE})
+target_compile_options(${TARGET_NAME} PRIVATE -Wno-unused-parameter)
+
+#
 # xrfw
 #
 add_library(xrfw ../../src/xrfw.cpp)
 target_include_directories(xrfw PUBLIC ../../include)
-target_link_libraries(xrfw PUBLIC plog openxr_loader)
+target_link_libraries(xrfw PUBLIC plog openxr_loader android_native_app_glue)
 target_compile_definitions(xrfw PUBLIC XR_USE_GRAPHICS_API_OPENGL_ES
                                        XR_USE_PLATFORM_ANDROID)
 
 #
 # xrfw_sample
 #
-add_library(xrfw_sample SHARED main.cpp)
-target_link_libraries(xrfw_sample PRIVATE xrfw glm::glm)
+add_library(xrfw_sample SHARED main.cpp platform_android.cpp)
+target_link_libraries(xrfw_sample PRIVATE xrfw glm::glm android_native_app_glue)

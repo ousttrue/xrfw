@@ -1,12 +1,23 @@
+#ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw.h"
+#include <openxr/openxr_platform.h>
+
+#define PLOG_EXPORT
+#include <plog/Appenders/ColorConsoleAppender.h>
+#include <plog/Init.h>
+#include <plog/Log.h>
+
 #include <algorithm>
 #include <list>
-#include <openxr/openxr_platform.h>
-#include <plog/Log.h>
 #include <span>
 #include <unordered_map>
 
 std::list<std::vector<XrSwapchainImageOpenGLKHR>> g_swapchainImageBuffers;
+
+void _xrfwInitLogger() {
+  static plog::ColorConsoleAppender<plog::MyFormatter> consoleAppender;
+  plog::init(plog::debug, &consoleAppender);
+}
 
 bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId) {
 
@@ -76,3 +87,4 @@ std::vector<XrSwapchainImageBaseHeader *> _xrfwAllocateSwapchainImageStructs(
 
   return swapchainImageBase;
 }
+#endif
