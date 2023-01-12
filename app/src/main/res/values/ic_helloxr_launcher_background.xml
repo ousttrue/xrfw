@@ -5,5 +5,5 @@
 -->
 <resources>
   <color name="ic_helloxr_launcher_background">#782B90</color>
-  <string name="app_name">Hello XR (OpenGL ES)</string>
+  <string name="app_name">XRFW sample (OpenGL ES)</string>
 </resources>
