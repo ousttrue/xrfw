@@ -47,13 +47,13 @@ int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats) {
 
   // List of supported color swapchain formats.
   constexpr int64_t SupportedColorSwapchainFormats[] = {
-      0x8059, // GL_RGB10_A2,
-      0x1908, // GL_RGBA16F,
+      // 0x8059, // GL_RGB10_A2,
+      // 0x1908, // GL_RGBA16F,
       // The two below should only be used as a fallback, as they are linear
       // color formats without enough bits for color depth, thus leading to
       // banding.
       0x8058, // GL_RGBA8,
-      0x8F97, // GL_RGBA8_SNORM,
+      // 0x8F97, // GL_RGBA8_SNORM,
   };
 
   auto swapchainFormatIt =

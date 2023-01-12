@@ -12,6 +12,7 @@
 #include <plog/Log.h>
 
 struct PlatformImpl {
+  JNIEnv *Env;
   ANativeWindow *NativeWindow = nullptr;
   bool Resumed = false;
   // void *applicationVM = nullptr;
@@ -31,11 +32,14 @@ struct PlatformImpl {
 
   XrInstanceCreateInfoAndroidKHR instanceCreateInfoAndroid_ = {};
   // require openxr graphics extension
-  const char *extensions[1] = {
+  const char *extensions[2] = {
+      XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME,
       XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
   };
 
   PlatformImpl(struct android_app *state) {
+    state->activity->vm->AttachCurrentThread(&Env, nullptr);
+
     state->userData = this;
     state->onAppCmd = app_handle_cmd;
     app_ = state;
@@ -210,11 +214,38 @@ const void *Platform::InstanceNext() const {
   return &impl_->instanceCreateInfoAndroid_;
 }
 bool Platform::InitializeGraphics() { return impl_->InitializeGraphics(); }
-bool Platform::BeginFrame() { return false; }
+bool Platform::BeginFrame() {
+  if (impl_->exitRenderLoop) {
+    return false;
+  }
+  // process_android_event(app, appState, xr);
+  // Read all pending android events.
+  for (;;) {
+
+    int timeout = -1; // blocking
+    if (impl_->Resumed || impl_->requestRestart) {
+      timeout = 0; // non blocking
+    }
+
+    int events;
+    struct android_poll_source *source;
+    if (ALooper_pollAll(timeout, nullptr, &events, (void **)&source) < 0) {
+      break;
+    }
+
+    if (source != nullptr) {
+      source->process(impl_->app_, source);
+    }
+  }
+
+  return true;
+}
+
 void Platform::EndFrame(OglRenderer &renderer) {}
 uint32_t
 Platform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
-  return 0;
+  return reinterpret_cast<const XrSwapchainImageOpenGLESKHR *>(swapchainImage)
+      ->image;
 }
 void Platform::Sleep(std::chrono::milliseconds ms) {}
 std::span<const char *> Platform::Extensions() const {
