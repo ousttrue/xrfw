@@ -1,8 +1,10 @@
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw.h"
+#include "xrfw_plog_formatter.h"
+#include <Windows.h>
+
 #include <openxr/openxr_platform.h>
 
-#define PLOG_EXPORT
 #include <plog/Appenders/ColorConsoleAppender.h>
 #include <plog/Init.h>
 #include <plog/Log.h>

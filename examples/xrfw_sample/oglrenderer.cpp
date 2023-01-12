@@ -132,15 +132,8 @@ private:
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0,
-#if XR_USE_PLATFORM_WIN32
-                 GL_DEPTH_COMPONENT32,
-#elif XR_USE_PLATFORM_ANDROID
-                 GL_DEPTH_COMPONENT32F,
-#else
-                error("NO XR_USE")
-#endif
-                 width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0,
+                 GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
     m_colorToDepthMap.insert(std::make_pair(colorTexture, depthTexture));
 

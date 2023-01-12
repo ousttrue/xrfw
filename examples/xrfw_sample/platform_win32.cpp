@@ -103,6 +103,10 @@ struct PlatformImpl {
   ~PlatformImpl() { glfwTerminate(); }
   bool InitializeGraphics() {
     // Create a windowed mode window and its OpenGL context
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     window_ = glfwCreateWindow(640, 480, "Hello xrfw", nullptr, nullptr);
     if (!window_) {
       return false;
@@ -146,6 +150,8 @@ struct PlatformImpl {
 
 Platform::Platform(struct android_app *) : impl_(new PlatformImpl) {}
 Platform::~Platform() { delete impl_; }
+const void *Platform::InstanceNext() const { return nullptr; }
+
 bool Platform::InitializeGraphics() { return impl_->InitializeGraphics(); }
 bool Platform::BeginFrame() { return impl_->BeginFrame(); }
 void Platform::EndFrame(OglRenderer &renderer) { impl_->EndFrame(renderer); }
@@ -154,8 +160,12 @@ Platform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
   return reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
       ->image;
 }
-void Platform::Sleep(std::chrono::milliseconds ms) { ::Sleep((uint32_t)ms.count()); }
-const char *const *Platform::Extensions() const { return impl_->extensions; }
+void Platform::Sleep(std::chrono::milliseconds ms) {
+  ::Sleep((uint32_t)ms.count());
+}
+std::span<const char *> Platform::Extensions() const {
+  return impl_->extensions;
+}
 const void *Platform::GraphicsBinding() const {
   return &impl_->graphicsBindingGL_;
 }
