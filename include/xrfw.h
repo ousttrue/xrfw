@@ -29,12 +29,13 @@ _xrfwAllocateSwapchainImageStructs(uint32_t capacity,
 #error "XR_USE_PLATFORM required"
 #endif
 
-XRFW_API XrInstance xrfwCreateInstance(const char **extensionNames,
+XRFW_API XrInstance xrfwCreateInstance(const char *const *extensionNames,
                                        uint32_t extensionCount);
 XRFW_API void xrfwDestroyInstance();
 XRFW_API XrInstance xrfwGetInstance();
 
-XRFW_API XrSession xrfwCreateSession(XrfwSwapchains *swapchains, const void *next);
+XRFW_API XrSession xrfwCreateSession(XrfwSwapchains *swapchains,
+                                     const void *next);
 XRFW_API void xrfwDestroySession(void *session);
 XRFW_API XrSpace xrfwAppSpace();
 

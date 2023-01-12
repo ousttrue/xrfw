@@ -81,8 +81,7 @@ std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session) {
   // Select a swapchain format.
   uint32_t swapchainFormatCount;
   auto result =
-      xrEnumerateSwapchainFormats(session, 0, &swapchainFormatCount,
-      nullptr);
+      xrEnumerateSwapchainFormats(session, 0, &swapchainFormatCount, nullptr);
   if (XR_FAILED(result)) {
     PLOG_FATAL << result;
     throw std::runtime_error("xrEnumerateSwapchainFormats");
@@ -103,7 +102,7 @@ std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session) {
 
 XRFW_API XrInstance xrfwGetInstance() { return g_instance; }
 
-XRFW_API XrInstance xrfwCreateInstance(const char **extensionNames,
+XRFW_API XrInstance xrfwCreateInstance(const char *const *extensionNames,
                                        uint32_t extensionCount) {
 
   static plog::ColorConsoleAppender<plog::MyFormatter> consoleAppender;
@@ -201,7 +200,8 @@ XRFW_API XrInstance xrfwCreateInstance(const char **extensionNames,
 
 XRFW_API void xrfwDestroyInstance() { xrDestroyInstance(g_instance); }
 
-XRFW_API XrSession xrfwCreateSession(XrfwSwapchains *swapchains, const void *next) {
+XRFW_API XrSession xrfwCreateSession(XrfwSwapchains *swapchains,
+                                     const void *next) {
   XrSessionCreateInfo sessionCreateInfo = {
       .type = XR_TYPE_SESSION_CREATE_INFO,
       .next = next, // &graphicsBindingGL,
