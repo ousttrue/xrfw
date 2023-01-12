@@ -1,24 +1,32 @@
-#include "oglrenderer.h"
-#include "ogldrawable.h"
-#include <array>
+#ifdef XR_USE_PLATFORM_ANDROID
+#include <GLES3/gl32.h>
+#elif XR_USE_PLATFORM_WIN32
 #include <gl/glew.h>
+#else
+error("no XR_USE")
+#endif
+
+#include "ogldrawable.h"
+#include "oglrenderer.h"
+#include <array>
 #include <iomanip>
 #include <memory>
 #include <plog/Log.h>
 #include <string_view>
 #include <unordered_map>
 
-std::unordered_map<uint64_t, const char *> g_glNameMap{
-    {GL_RGBA8, "GL_RGBA8"},
-    {GL_RGB16F, "GL_RGB16F"},
-    {GL_R11F_G11F_B10F_EXT, "GL_R11F_G11F_B10F_EXT"},
-    {GL_SRGB8_ALPHA8_EXT, "GL_SRGB8_ALPHA8_EXT"},
-    {GL_DEPTH_COMPONENT16, "GL_DEPTH_COMPONENT16"},
-    {GL_DEPTH_COMPONENT24, "GL_DEPTH_COMPONENT24"},
-    {GL_DEPTH_COMPONENT32, "GL_DEPTH_COMPONENT32"},
-    {GL_DEPTH24_STENCIL8, "GL_DEPTH24_STENCIL8"},
-    {GL_DEPTH_COMPONENT32F, "GL_DEPTH_COMPONENT32F"},
-    {GL_DEPTH32F_STENCIL8, "GL_DEPTH32F_STENCIL8"},
+std::unordered_map<uint64_t, const char *> g_glNameMap {
+  {GL_RGBA8, "GL_RGBA8"}, {GL_RGB16F, "GL_RGB16F"},
+      {GL_DEPTH_COMPONENT16, "GL_DEPTH_COMPONENT16"},
+      {GL_DEPTH_COMPONENT24, "GL_DEPTH_COMPONENT24"},
+      {GL_DEPTH24_STENCIL8, "GL_DEPTH24_STENCIL8"},
+      {GL_DEPTH_COMPONENT32F, "GL_DEPTH_COMPONENT32F"},
+      {GL_DEPTH32F_STENCIL8, "GL_DEPTH32F_STENCIL8"},
+#if XR_USE_PLATFORM_WIN32
+      {GL_R11F_G11F_B10F_EXT, "GL_R11F_G11F_B10F_EXT"},
+      {GL_SRGB8_ALPHA8_EXT, "GL_SRGB8_ALPHA8_EXT"},
+      {GL_DEPTH_COMPONENT32, "GL_DEPTH_COMPONENT32"},
+#endif
 };
 
 static std::string_view ToGLString(uint64_t value) {
@@ -39,7 +47,9 @@ class OglRendererImpl {
 
 public:
   OglRendererImpl() {
+#if XR_USE_PLATFORM_WIN32
     glewInit();
+#endif
     glGenFramebuffers(1, &m_swapchainFramebuffer);
 
     m_drawable = OglDrawable::Create();
@@ -81,7 +91,13 @@ private:
     // Clear swapchain and depth buffer.
     glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2],
                  m_clearColor[3]);
+#if XR_USE_PLATFORM_WIN32
     glClearDepth(1.0f);
+#elif XR_USE_PLATFORM_ANDROID
+    glClearDepthf(1.0f);
+#else
+    error("no XR_USE")
+#endif
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     glFrontFace(GL_CW);
@@ -116,8 +132,15 @@ private:
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0,
-                 GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0,
+#if XR_USE_PLATFORM_WIN32
+                 GL_DEPTH_COMPONENT32,
+#elif XR_USE_PLATFORM_ANDROID
+                 GL_DEPTH_COMPONENT32F,
+#else
+                error("NO XR_USE")
+#endif
+                 width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
     m_colorToDepthMap.insert(std::make_pair(colorTexture, depthTexture));
 

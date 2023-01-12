@@ -12,8 +12,6 @@
 #include <span>
 #include <unordered_map>
 
-std::list<std::vector<XrSwapchainImageOpenGLKHR>> g_swapchainImageBuffers;
-
 void _xrfwInitLogger() {
   static plog::ColorConsoleAppender<plog::MyFormatter> consoleAppender;
   plog::init(plog::debug, &consoleAppender);
@@ -68,6 +66,7 @@ int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats) {
   return *swapchainFormatIt;
 }
 
+std::list<std::vector<XrSwapchainImageOpenGLKHR>> g_swapchainImageBuffers;
 std::vector<XrSwapchainImageBaseHeader *> _xrfwAllocateSwapchainImageStructs(
     uint32_t capacity, const XrSwapchainCreateInfo & /*swapchainCreateInfo*/) {
   // Allocate and initialize the buffer of image structs (must be sequential in

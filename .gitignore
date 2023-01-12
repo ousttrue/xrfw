@@ -6,4 +6,11 @@
 /.meson-subproject-wrap-hash.txt
 /thirdparty/ovr_openxr_mobile_sdk/*
 !/thirdparty/ovr_openxr_mobile_sdk/extract_here.txt
-/build/
+build/
+.gradle/
+gradle/
+.cxx/
+gradlew*
+local.properties
+.idea/
+

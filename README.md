@@ -13,6 +13,6 @@ PC は `meson` で、 Android は gradle から使えるように `cmake` でビ
 ## 参考
 
 - https://github.com/KhronosGroup/OpenXR-SDK-Source
-  - hello_xr
+  - xrfw_sample
 - https://developer.oculus.com/documentation/native/android/mobile-intro/
   - XrApp

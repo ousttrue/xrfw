@@ -1,5 +1,12 @@
-#include "ogldrawable.h"
+#ifdef XR_USE_PLATFORM_ANDROID
+#include <GLES3/gl32.h>
+#elif XR_USE_PLATFORM_WIN32
 #include <gl/glew.h>
+#else
+error("no XR_USE")
+#endif
+
+#include "ogldrawable.h"
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -123,7 +130,7 @@ void OglDrawable::Render(const float projection[16], const float view[16],
 
     // Draw the cube.
     glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(_countof(Geometry::c_cubeIndices)),
+                   static_cast<GLsizei>(sizeof(Geometry::c_cubeIndices)/sizeof(Geometry::c_cubeIndices[0])),
                    GL_UNSIGNED_SHORT, nullptr);
   }
 

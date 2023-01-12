@@ -10,7 +10,8 @@ int start(struct android_app *state = nullptr) {
   }
 
   // instance
-  auto instance = xrfwCreateInstance(platform.InstanceNext(), platform.Extensions(), 1);
+  auto instance =
+      xrfwCreateInstance(platform.InstanceNext(), platform.Extensions(), 1);
   if (!instance) {
     return 2;
   }
@@ -66,6 +67,7 @@ int start(struct android_app *state = nullptr) {
 #ifdef XR_USE_PLATFORM_WIN32
 int main(int argc, char **argv) { return start(); }
 #elif XR_USE_PLATFORM_ANDROID
+#include <android_native_app_glue.h>
 void android_main(struct android_app *state) { start(state); }
 #else
 error("XR_USE_PLATFORM_WIN32 or XR_USE_PLATFORM_ANDROID required")
