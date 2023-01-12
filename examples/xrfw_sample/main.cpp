@@ -10,8 +10,9 @@ int start(struct android_app *state = nullptr) {
   }
 
   // instance
-  auto instance =
-      xrfwCreateInstance(platform.InstanceNext(), platform.Extensions(), 1);
+  auto extensions = platform.Extensions();
+  auto instance = xrfwCreateInstance(platform.InstanceNext(), extensions.data(),
+                                     (uint32_t)extensions.size());
   if (!instance) {
     return 2;
   }

@@ -2,6 +2,7 @@
 #include "oglrenderer.h"
 #include <chrono>
 #include <openxr/openxr.h>
+#include <span>
 
 struct Platform {
   struct PlatformImpl *impl_ = nullptr;
@@ -13,6 +14,6 @@ struct Platform {
   void EndFrame(OglRenderer &renderer);
   uint32_t CastTexture(const XrSwapchainImageBaseHeader *swapchainImage);
   void Sleep(std::chrono::milliseconds ms);
-  const char *const *Extensions() const;
+  std::span<const char *> Extensions() const;
   const void *GraphicsBinding() const;
 };

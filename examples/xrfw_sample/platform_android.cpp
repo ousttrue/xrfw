@@ -6,6 +6,7 @@
 
 #include <EGL/egl.h>
 #include <GLES/gl.h>
+#include <GLES3/gl32.h>
 
 #include <openxr/openxr_platform.h>
 #include <plog/Log.h>
@@ -13,12 +14,22 @@
 struct PlatformImpl {
   ANativeWindow *NativeWindow = nullptr;
   bool Resumed = false;
-  void *applicationVM = nullptr;
-  void *applicationActivity = nullptr;
+  // void *applicationVM = nullptr;
+  // void *applicationActivity = nullptr;
+  struct android_app *app_ = nullptr;
   bool requestRestart = false;
   bool exitRenderLoop = false;
+  // EGL
+  EGLint majorVersion_;
+  EGLint minorVersion_;
+  EGLSurface surface_ = 0;
+  EGLint width_ = 0;
+  EGLint height_ = 0;
+  XrGraphicsBindingOpenGLESAndroidKHR graphicsBinding_ = {
+      .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR,
+  };
 
-  XrInstanceCreateInfoAndroidKHR instanceCreateInfoAndroid;
+  XrInstanceCreateInfoAndroidKHR instanceCreateInfoAndroid_ = {};
   // require openxr graphics extension
   const char *extensions[1] = {
       XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
@@ -27,15 +38,58 @@ struct PlatformImpl {
   PlatformImpl(struct android_app *state) {
     state->userData = this;
     state->onAppCmd = app_handle_cmd;
-    applicationVM = state->activity->vm;
-    applicationActivity = state->activity->clazz;
-    instanceCreateInfoAndroid = {
+    app_ = state;
+    instanceCreateInfoAndroid_ = {
         .type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
-        .applicationVM = applicationVM,
-        .applicationActivity = applicationActivity,
+        .applicationVM = app_->activity->vm,
+        .applicationActivity = app_->activity->clazz,
     };
   }
   ~PlatformImpl() {}
+
+  bool Initialize() {
+
+    graphicsBinding_.display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglInitialize(graphicsBinding_.display, &majorVersion_, &minorVersion_);
+
+    EGLint numConfigs;
+    /*
+     * Here specify the attributes of the desired configuration.
+     * Below, we select an EGLConfig with at least 8 bits per color
+     * component compatible with on-screen windows
+     */
+    const EGLint attribs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+                              EGL_NONE};
+    EGLConfig config;
+    eglChooseConfig(graphicsBinding_.display, attribs, &config, 1, &numConfigs);
+
+    EGLint format;
+    /* EGL_NATIVE_VISUAL_ID is an attribute of the EGLConfig that is
+     * guaranteed to be accepted by ANativeWindow_setBuffersGeometry().
+     * As soon as we picked a EGLConfig, we can safely reconfigure the
+     * ANativeWindow buffers to match, using EGL_NATIVE_VISUAL_ID. */
+    eglGetConfigAttrib(graphicsBinding_.display, config, EGL_NATIVE_VISUAL_ID,
+                       &format);
+    surface_ = eglCreateWindowSurface(graphicsBinding_.display, config,
+                                      app_->window, nullptr);
+
+    EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+    graphicsBinding_.context = eglCreateContext(
+        graphicsBinding_.display, config, EGL_NO_CONTEXT, contextAttribs);
+    if (graphicsBinding_.context == EGL_NO_CONTEXT) {
+      PLOG_FATAL << "eglCreateContext failed with error 0x" << std::hex
+                 << eglGetError();
+      return false;
+    }
+
+    if (eglMakeCurrent(graphicsBinding_.display, surface_, surface_,
+                       graphicsBinding_.context) == EGL_FALSE) {
+      PLOG_FATAL << "Unable to eglMakeCurrent";
+      return false;
+    }
+
+    return true;
+  }
   bool InitializeGraphics() {
     // Initialize the loader for this platform
     PFN_xrInitializeLoaderKHR initializeLoader = nullptr;
@@ -49,14 +103,48 @@ struct PlatformImpl {
     XrLoaderInitInfoAndroidKHR loaderInitInfoAndroid{
         .type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR,
         .next = NULL,
-        .applicationVM = applicationVM,
-        .applicationContext = applicationActivity,
+        .applicationVM = app_->activity->vm,
+        .applicationContext = app_->activity->clazz,
     };
     if (XR_FAILED(initializeLoader(
             (const XrLoaderInitInfoBaseHeaderKHR *)&loaderInitInfoAndroid))) {
       PLOG_FATAL << "xrInitializeLoaderKHR";
       return false;
     }
+
+    if (!Initialize()) {
+      return false;
+    }
+
+    // Initialize the gl extensions. Note we have to open a window.
+    // ksDriverInstance driverInstance{};
+    // ksGpuQueueInfo queueInfo{};
+    // ksGpuSurfaceColorFormat
+    // colorFormat{KS_GPU_SURFACE_COLOR_FORMAT_B8G8R8A8};
+    // ksGpuSurfaceDepthFormat depthFormat{KS_GPU_SURFACE_DEPTH_FORMAT_D24};
+    // ksGpuSampleCount sampleCount{KS_GPU_SAMPLE_COUNT_1};
+    // if (!ksGpuWindow_Create(&window, &driverInstance, &queueInfo, 0,
+    // colorFormat,
+    //                         depthFormat, sampleCount, 640, 480, false)) {
+    //   THROW("Unable to create GL context");
+    // }
+
+    // GLint major = 0;
+    // GLint minor = 0;
+    // glGetIntegerv(GL_MAJOR_VERSION, &major);
+    // glGetIntegerv(GL_MINOR_VERSION, &minor);
+    // const XrVersion desiredApiVersion = XR_MAKE_VERSION(major, minor, 0);
+    // if (graphicsRequirements.minApiVersionSupported > desiredApiVersion) {
+    //   THROW("Runtime does not support desired Graphics API and/or version");
+    // }
+
+    // m_contextApiMajorVersion = major;
+
+    // #if defined(XR_USE_PLATFORM_ANDROID)
+    //       m_graphicsBinding.display = window.display;
+    //     m_graphicsBinding.config = (EGLConfig)0;
+    //     m_graphicsBinding.context = window.context.context;
+    // #endif
 
     return true;
   }
@@ -119,7 +207,7 @@ Platform::Platform(struct android_app *state)
     : impl_(new PlatformImpl(state)) {}
 Platform::~Platform() { delete impl_; }
 const void *Platform::InstanceNext() const {
-  return &impl_->instanceCreateInfoAndroid;
+  return &impl_->instanceCreateInfoAndroid_;
 }
 bool Platform::InitializeGraphics() { return impl_->InitializeGraphics(); }
 bool Platform::BeginFrame() { return false; }
@@ -129,6 +217,10 @@ Platform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
   return 0;
 }
 void Platform::Sleep(std::chrono::milliseconds ms) {}
-const char *const *Platform::Extensions() const {}
-const void *Platform::GraphicsBinding() const {}
+std::span<const char *> Platform::Extensions() const {
+  return impl_->extensions;
+}
+const void *Platform::GraphicsBinding() const {
+  return &impl_->graphicsBinding_;
+}
 #endif
