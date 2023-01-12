@@ -11,11 +11,12 @@ error("no XR_USE")
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <openxr/openxr.h>
+#include <plog/Log.h>
 #include <stdlib.h>
 
 static const char *VertexShaderGlsl = R"_(
-    #version 410
-
+    #version 310 es
+    precision highp float;
     in vec3 VertexPos;
     in vec3 VertexColor;
 
@@ -30,8 +31,8 @@ static const char *VertexShaderGlsl = R"_(
     )_";
 
 static const char *FragmentShaderGlsl = R"_(
-    #version 410
-
+    #version 310 es
+    precision highp float;
     in vec3 PSVertexColor;
     out vec4 FragColor;
 
@@ -130,7 +131,8 @@ void OglDrawable::Render(const float projection[16], const float view[16],
 
     // Draw the cube.
     glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(sizeof(Geometry::c_cubeIndices)/sizeof(Geometry::c_cubeIndices[0])),
+                   static_cast<GLsizei>(sizeof(Geometry::c_cubeIndices) /
+                                        sizeof(Geometry::c_cubeIndices[0])),
                    GL_UNSIGNED_SHORT, nullptr);
   }
 
@@ -146,16 +148,34 @@ std::shared_ptr<OglDrawable> OglDrawable::Create() {
   return ptr;
 }
 
-bool OglDrawable::Load() {
-  GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertexShader, 1, &VertexShaderGlsl, nullptr);
-  glCompileShader(vertexShader);
-  // CheckShader(vertexShader);
+static uint32_t CreateCompileShader(GLenum shader_type, const char *src) {
+  auto shader = glCreateShader(shader_type);
+  glShaderSource(shader, 1, &src, nullptr);
+  glCompileShader(shader);
+  GLint r = 0;
+  glGetShaderiv(shader, GL_COMPILE_STATUS, &r);
+  if (r == GL_FALSE) {
+    GLchar msg[4096] = {};
+    GLsizei length;
+    glGetShaderInfoLog(shader, sizeof(msg), &length, msg);
+    PLOG_FATAL << "Compile shader failed: " << msg;
+    glDeleteShader(shader);
+    return 0;
+  }
+  return shader;
+}
 
-  GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragmentShader, 1, &FragmentShaderGlsl, nullptr);
-  glCompileShader(fragmentShader);
-  // CheckShader(fragmentShader);
+bool OglDrawable::Load() {
+  auto vertexShader = CreateCompileShader(GL_VERTEX_SHADER, VertexShaderGlsl);
+  if (!vertexShader) {
+    return false;
+  }
+
+  auto fragmentShader =
+      CreateCompileShader(GL_FRAGMENT_SHADER, FragmentShaderGlsl);
+  if (!fragmentShader) {
+    return false;
+  }
 
   m_program = glCreateProgram();
   glAttachShader(m_program, vertexShader);
