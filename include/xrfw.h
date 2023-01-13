@@ -29,11 +29,13 @@ struct XrfwInitialization {
 };
 
 #ifdef XR_USE_PLATFORM_WIN32
-#include "xrfw_win32.h"
-#elif XR_USE_PLATFORM_ANDROID
-#include "xrfw_android.h"
+#ifdef XRFW_BUILD
+#define XRFW_API extern "C" __declspec(dllexport)
 #else
-#error "XR_USE_PLATFORM required"
+#define XRFW_API extern "C" __declspec(dllimport)
+#endif
+#else
+#define XRFW_API
 #endif
 
 XRFW_API void xrfwInitLogger();
@@ -66,6 +68,14 @@ struct XrfwViewMatrices {
 };
 XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrfwViewMatrices *viewMatrix);
 XRFW_API XrBool32 xrfwEndFrame();
+
+#ifdef XR_USE_PLATFORM_WIN32
+#include "xrfw_win32.h"
+#elif XR_USE_PLATFORM_ANDROID
+#include "xrfw_android.h"
+#else
+#error "XR_USE_PLATFORM required"
+#endif
 
 //
 #include <iosfwd>

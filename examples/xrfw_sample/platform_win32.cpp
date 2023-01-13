@@ -15,6 +15,8 @@
 #include <numbers>
 #include <plog/Log.h>
 
+#include <xrfw.h>
+
 struct TurnTable {
   glm::vec3 shift = {0, 0, -5};
   float yaw = 0;
@@ -88,7 +90,6 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 struct PlatformImpl {
   GLFWwindow *window_ = nullptr;
   TurnTable camera;
-  XrGraphicsBindingOpenGLWin32KHR graphicsBindingGL_ = {};
 
   PlatformImpl() {
     if (!glfwInit()) {
@@ -97,6 +98,7 @@ struct PlatformImpl {
     }
   }
   ~PlatformImpl() { glfwTerminate(); }
+
   bool InitializeGraphics() {
     // Create a windowed mode window and its OpenGL context
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
@@ -118,14 +120,13 @@ struct PlatformImpl {
     glfwSetMouseButtonCallback(window_, mouse_button_callback);
     glfwSetFramebufferSizeCallback(window_, framebuffer_size_callback);
 
-    graphicsBindingGL_ = {
-        .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
-        .next = nullptr,
-        .hDC = GetDC(glfwGetWin32Window(window_)),
-        .hGLRC = glfwGetWGLContext(window_),
-    };
-
     return true;
+  }
+
+  XrSession CreateSession(XrfwSwapchains *swapchains) {
+    return xrfwCreateSessionWin32OpenGL(swapchains,
+                                        GetDC(glfwGetWin32Window(window_)),
+                                        glfwGetWGLContext(window_));
   }
 
   bool BeginFrame() {
@@ -147,6 +148,9 @@ struct PlatformImpl {
 Platform::Platform(struct android_app *) : impl_(new PlatformImpl) {}
 Platform::~Platform() { delete impl_; }
 bool Platform::InitializeGraphics() { return impl_->InitializeGraphics(); }
+XrSession Platform::CreateSession(XrfwSwapchains *swapchains) {
+  return impl_->CreateSession(swapchains);
+}
 bool Platform::BeginFrame() { return impl_->BeginFrame(); }
 void Platform::EndFrame(OglRenderer &renderer) { impl_->EndFrame(renderer); }
 uint32_t
@@ -156,8 +160,5 @@ Platform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
 }
 void Platform::Sleep(std::chrono::milliseconds ms) {
   ::Sleep((uint32_t)ms.count());
-}
-const void *Platform::GraphicsBinding() const {
-  return &impl_->graphicsBindingGL_;
 }
 #endif

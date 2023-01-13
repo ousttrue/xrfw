@@ -1,7 +1,6 @@
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw.h"
 #include "xrfw_plog_formatter.h"
-#include <Windows.h>
 
 #include <openxr/openxr_platform.h>
 
@@ -20,7 +19,7 @@ XRFW_API void xrfwInitLogger() {
 }
 
 // require openxr graphics extension
-static const char* extensions[1] = {
+static const char *extensions[1] = {
     XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
 };
 XRFW_API void xrfwPlatformWin32OpenGL(XrfwInitialization *init) {
@@ -96,5 +95,16 @@ std::vector<XrSwapchainImageBaseHeader *> _xrfwAllocateSwapchainImageStructs(
   g_swapchainImageBuffers.push_back(std::move(swapchainImageBuffer));
 
   return swapchainImageBase;
+}
+
+XRFW_API XrSession xrfwCreateSessionWin32OpenGL(XrfwSwapchains *swapchains,
+                                                HDC dc, HGLRC glrc) {
+  XrGraphicsBindingOpenGLWin32KHR graphicsBindingGL = {
+      .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
+      .next = nullptr,
+      .hDC = dc,
+      .hGLRC = glrc,
+  };
+  return xrfwCreateSession(swapchains, &graphicsBindingGL);
 }
 #endif

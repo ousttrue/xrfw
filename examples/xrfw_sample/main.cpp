@@ -3,10 +3,11 @@
 
 #include "platform.h"
 
-int session(Platform &platform) {
+int xrSession(Platform &platform) {
   // session and swapchains from graphics
   XrfwSwapchains swapchains;
-  auto session = xrfwCreateSession(&swapchains, platform.GraphicsBinding());
+  auto session = platform.CreateSession(&swapchains);
+  // auto session = xrfwCreateSession(&swapchains, platform.GraphicsBinding());
   if (!session) {
     return 3;
   }
@@ -65,7 +66,7 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  auto ret = session(platform);
+  auto ret = xrSession(platform);
   xrfwDestroyInstance();
   return ret;
 }

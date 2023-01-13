@@ -1,11 +1,8 @@
 #pragma once
-// #define WINDOWS_LEAN_AND_MEAN
-// #include <Windows.h>
-
-#ifdef XRFW_BUILD
-#define XRFW_API extern "C" __declspec(dllexport)
-#else
-#define XRFW_API extern "C" __declspec(dllimport)
-#endif
+#include "xrfw.h"
+#define WINDOWS_LEAN_AND_MEAN
+#include <Windows.h>
 
 XRFW_API void xrfwPlatformWin32OpenGL(XrfwInitialization *init);
+XRFW_API XrSession xrfwCreateSessionWin32OpenGL(XrfwSwapchains *swapchains,
+                                                HDC dc, HGLRC glrc);
