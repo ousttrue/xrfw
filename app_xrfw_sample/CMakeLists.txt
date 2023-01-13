@@ -25,7 +25,7 @@ FetchContent_Populate(
 # openxr_loader
 #
 set(MOBILE_SDK_DIR
-    ${CMAKE_CURRENT_LIST_DIR}/../../thirdparty/ovr_openxr_mobile_sdk)
+    ${CMAKE_CURRENT_LIST_DIR}/../thirdparty/ovr_openxr_mobile_sdk)
 add_library(openxr_loader SHARED IMPORTED)
 set_target_properties(
   openxr_loader
@@ -54,8 +54,8 @@ target_compile_options(${TARGET_NAME} PRIVATE -Wno-unused-parameter)
 #
 # xrfw
 #
-add_library(xrfw ../../src/xrfw.cpp ../../src/xrfw_android.cpp)
-target_include_directories(xrfw PUBLIC ../../include)
+add_library(xrfw ../src/xrfw.cpp ../src/xrfw_android.cpp)
+target_include_directories(xrfw PUBLIC ../include)
 target_link_libraries(xrfw PUBLIC plog openxr_loader android_native_app_glue)
 target_compile_definitions(xrfw PUBLIC XR_USE_GRAPHICS_API_OPENGL_ES
                                        XR_USE_PLATFORM_ANDROID)

@@ -38,7 +38,7 @@ xrfw_dep = declare_dependency(
     dependencies: [plog_dep, openxr_loader_dep],
 )
 
-subdir('examples/xrfw_sample')
-subdir('examples/tests')
+subdir('app_xrfw_sample')
+subdir('tests')
 
 meson.override_dependency('xrfw', xrfw_dep)
