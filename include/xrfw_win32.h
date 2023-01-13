@@ -7,3 +7,5 @@
 #else
 #define XRFW_API extern "C" __declspec(dllimport)
 #endif
+
+XRFW_API void xrfwPlatformWin32OpenGL(XrfwInitialization *init);

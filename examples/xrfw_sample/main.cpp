@@ -3,20 +3,7 @@
 
 #include "platform.h"
 
-int start(struct android_app *state = nullptr) {
-  Platform platform(state);
-  if (!platform.InitializeGraphics()) {
-    return 1;
-  }
-
-  // instance
-  auto extensions = platform.Extensions();
-  auto instance = xrfwCreateInstance(platform.InstanceNext(), extensions.data(),
-                                     (uint32_t)extensions.size());
-  if (!instance) {
-    return 2;
-  }
-
+int session(Platform &platform) {
   // session and swapchains from graphics
   XrfwSwapchains swapchains;
   auto session = xrfwCreateSession(&swapchains, platform.GraphicsBinding());
@@ -61,12 +48,27 @@ int start(struct android_app *state = nullptr) {
   }
 
   xrfwDestroySession(session);
-  xrfwDestroyInstance();
   return 0;
 }
 
 #ifdef XR_USE_PLATFORM_WIN32
-int main(int argc, char **argv) { return start(); }
+int main(int argc, char **argv) {
+  XrfwInitialization init;
+  xrfwPlatformWin32OpenGL(&init);
+  auto instance = xrfwCreateInstance(&init);
+  if (!instance) {
+    return 1;
+  }
+
+  Platform platform(nullptr);
+  if (!platform.InitializeGraphics()) {
+    return 2;
+  }
+
+  auto ret = session(platform);
+  xrfwDestroyInstance();
+  return ret;
+}
 #elif XR_USE_PLATFORM_ANDROID
 #include <android_native_app_glue.h>
 void android_main(struct android_app *state) { start(state); }

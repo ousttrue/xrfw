@@ -64,29 +64,30 @@ std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session) {
 
 XRFW_API XrInstance xrfwGetInstance() { return g_instance; }
 
-XRFW_API XrInstance xrfwCreateInstance(const void *next,
-                                       const char *const *extensionNames,
-                                       uint32_t extensionCount) {
-  _xrfwInitLogger();
+XRFW_API XrInstance xrfwCreateInstance(XrfwInitialization *init,
+                                       XrApplicationInfo *pAppInfo) {
+  xrfwInitLogger();
 
-  // instance
   XrApplicationInfo appInfo{
-      .applicationName = "xrfw_sample",
+      .applicationName = "xrfw_app",
       .applicationVersion = 0,
-      .engineName = "xrfw_sample_engine",
+      .engineName = "xrfw_engine",
       .engineVersion = 0,
       .apiVersion = XR_CURRENT_API_VERSION,
   };
+  if (pAppInfo) {
+    appInfo = *pAppInfo;
+  }
 
   XrInstanceCreateInfo instanceCreateInfo{
       .type = XR_TYPE_INSTANCE_CREATE_INFO,
-      .next = next,
+      .next = init->next,
       .createFlags = 0,
       .applicationInfo = appInfo,
       .enabledApiLayerCount = 0,
       .enabledApiLayerNames = nullptr,
-      .enabledExtensionCount = extensionCount,
-      .enabledExtensionNames = extensionNames,
+      .enabledExtensionCount = init->extensionCount,
+      .enabledExtensionNames = init->extensionNames,
   };
 
   auto result = xrCreateInstance(&instanceCreateInfo, &g_instance);

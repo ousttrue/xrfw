@@ -14,9 +14,18 @@
 #include <span>
 #include <unordered_map>
 
-void _xrfwInitLogger() {
+XRFW_API void xrfwInitLogger() {
   static plog::ColorConsoleAppender<plog::MyFormatter> consoleAppender;
   plog::init(plog::debug, &consoleAppender);
+}
+
+// require openxr graphics extension
+static const char* extensions[1] = {
+    XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
+};
+XRFW_API void xrfwPlatformWin32OpenGL(XrfwInitialization *init) {
+  init->extensionNames = extensions;
+  init->extensionCount = _countof(extensions);
 }
 
 bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId) {

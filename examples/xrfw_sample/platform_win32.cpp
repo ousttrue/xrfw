@@ -88,10 +88,6 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 struct PlatformImpl {
   GLFWwindow *window_ = nullptr;
   TurnTable camera;
-  // require openxr graphics extension
-  const char *extensions[1] = {
-      XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
-  };
   XrGraphicsBindingOpenGLWin32KHR graphicsBindingGL_ = {};
 
   PlatformImpl() {
@@ -150,8 +146,6 @@ struct PlatformImpl {
 
 Platform::Platform(struct android_app *) : impl_(new PlatformImpl) {}
 Platform::~Platform() { delete impl_; }
-const void *Platform::InstanceNext() const { return nullptr; }
-
 bool Platform::InitializeGraphics() { return impl_->InitializeGraphics(); }
 bool Platform::BeginFrame() { return impl_->BeginFrame(); }
 void Platform::EndFrame(OglRenderer &renderer) { impl_->EndFrame(renderer); }
@@ -162,9 +156,6 @@ Platform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
 }
 void Platform::Sleep(std::chrono::milliseconds ms) {
   ::Sleep((uint32_t)ms.count());
-}
-std::span<const char *> Platform::Extensions() const {
-  return impl_->extensions;
 }
 const void *Platform::GraphicsBinding() const {
   return &impl_->graphicsBindingGL_;

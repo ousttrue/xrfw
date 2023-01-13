@@ -15,7 +15,7 @@
 
 #include <list>
 
-void _xrfwInitLogger() {
+XRFW_API void xrfwInitLogger() {
   static plog::AndroidAppender<plog::TxtFormatter> androidAppender("app");
   plog::init(plog::verbose, &androidAppender);
 }

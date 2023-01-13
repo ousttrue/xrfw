@@ -1,10 +1,10 @@
 #pragma once
 #include <openxr/openxr.h>
+#include <ostream>
 #include <span>
 #include <stdint.h>
 #include <string_view>
 #include <vector>
-#include <ostream>
 
 struct XrfwSwapchains {
   XrSwapchain left;
@@ -15,13 +15,18 @@ struct XrfwSwapchains {
   int rightHeight;
 };
 
-void _xrfwInitLogger();
 bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId);
 std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session);
 int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats);
 std::vector<XrSwapchainImageBaseHeader *>
 _xrfwAllocateSwapchainImageStructs(uint32_t capacity,
                                    const XrSwapchainCreateInfo &);
+
+struct XrfwInitialization {
+  const char *const *extensionNames = nullptr;
+  uint32_t extensionCount = 0;
+  const void *next = nullptr;
+};
 
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw_win32.h"
@@ -31,9 +36,9 @@ _xrfwAllocateSwapchainImageStructs(uint32_t capacity,
 #error "XR_USE_PLATFORM required"
 #endif
 
-XRFW_API XrInstance xrfwCreateInstance(const void *next,
-                                       const char *const *extensionNames,
-                                       uint32_t extensionCount);
+XRFW_API void xrfwInitLogger();
+XRFW_API XrInstance xrfwCreateInstance(XrfwInitialization *init,
+                                       XrApplicationInfo *appInfo = nullptr);
 XRFW_API void xrfwDestroyInstance();
 XRFW_API XrInstance xrfwGetInstance();
 
