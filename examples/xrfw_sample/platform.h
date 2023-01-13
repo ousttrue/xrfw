@@ -8,6 +8,7 @@ struct Platform {
   struct PlatformImpl *impl_ = nullptr;
   Platform(struct android_app *state = nullptr);
   ~Platform();
+  bool InitializeLoader();
   bool InitializeGraphics();
   XrSession CreateSession(struct XrfwSwapchains *swapchains);
   bool BeginFrame();

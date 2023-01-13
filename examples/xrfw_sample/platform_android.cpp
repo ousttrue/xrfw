@@ -1,7 +1,6 @@
 #ifdef XR_USE_PLATFORM_ANDROID
 #include "platform.h"
-#include <android/log.h>
-#include <android/sensor.h>
+#include <xrfw.h>
 #include <android_native_app_glue.h>
 
 #include <EGL/egl.h>
@@ -55,16 +54,7 @@ struct ksGpuLimits {
   int maxSamples;
 };
 
-struct ksGpuContext {
-  // const ksGpuDevice *device;
-  EGLDisplay display;
-  EGLConfig config;
-  EGLSurface tinySurface;
-  EGLSurface mainSurface;
-  EGLContext context;
-};
-
-static const char *EglErrorString(const EGLint error) {
+char *EglErrorString(const EGLint error) {
   switch (error) {
   case EGL_SUCCESS:
     return "EGL_SUCCESS";
@@ -166,106 +156,29 @@ struct PlatformImpl {
   // EGL
   EGLint majorVersion_;
   EGLint minorVersion_;
+  EGLDisplay display_ = 0;
   EGLSurface surface_ = 0;
+  EGLContext context_ = 0;
   EGLint width_ = 0;
   EGLint height_ = 0;
-  XrGraphicsBindingOpenGLESAndroidKHR graphicsBinding_ = {
-      .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR,
-  };
-
-  XrInstanceCreateInfoAndroidKHR instanceCreateInfoAndroid_ = {};
-  // require openxr graphics extension
-  const char *extensions[2] = {
-      XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME,
-      XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
-  };
 
   PlatformImpl(struct android_app *state) {
     state->activity->vm->AttachCurrentThread(&Env, nullptr);
-
     state->userData = this;
     state->onAppCmd = app_handle_cmd;
     app_ = state;
-    instanceCreateInfoAndroid_ = {
-        .type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
-        .applicationVM = app_->activity->vm,
-        .applicationActivity = app_->activity->clazz,
-    };
   }
   ~PlatformImpl() {}
 
+  bool InitializeLoader() { return xrfwInitializeLoaderAndroid(app_); }
+
   bool InitializeGraphics() {
-    //
-    // Initialize the loader for this platform
-    //
-    PFN_xrInitializeLoaderKHR initializeLoader = nullptr;
-    if (XR_FAILED(
-            xrGetInstanceProcAddr(XR_NULL_HANDLE, "xrInitializeLoaderKHR",
-                                  (PFN_xrVoidFunction *)(&initializeLoader)))) {
-      PLOG_FATAL << "no xrInitializeLoaderKHR";
-      return false;
-    }
-
-    XrLoaderInitInfoAndroidKHR loaderInitInfoAndroid{
-        .type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR,
-        .next = NULL,
-        .applicationVM = app_->activity->vm,
-        .applicationContext = app_->activity->clazz,
-    };
-    if (XR_FAILED(initializeLoader(
-            (const XrLoaderInitInfoBaseHeaderKHR *)&loaderInitInfoAndroid))) {
-      PLOG_FATAL << "xrInitializeLoaderKHR";
-      return false;
-    }
-
     //
     // EGL
     //
-    graphicsBinding_.display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    eglInitialize(graphicsBinding_.display, &majorVersion_, &minorVersion_);
+    display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglInitialize(display_, &majorVersion_, &minorVersion_);
     PLOG_INFO << "eglInitialize => " << majorVersion_ << "." << minorVersion_;
-
-    // EGLint numConfigs;
-    // /*
-    //  * Here specify the attributes of the desired configuration.
-    //  * Below, we select an EGLConfig with at least 8 bits per color
-    //  * component compatible with on-screen windows
-    //  */
-    // const EGLint attribs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-    //                           EGL_NONE};
-    // EGLConfig config;
-    // eglChooseConfig(graphicsBinding_.display, attribs, &config, 1,
-    // &numConfigs);
-
-    // EGLint format;
-    // /* EGL_NATIVE_VISUAL_ID is an attribute of the EGLConfig that is
-    //  * guaranteed to be accepted by ANativeWindow_setBuffersGeometry().
-    //  * As soon as we picked a EGLConfig, we can safely reconfigure the
-    //  * ANativeWindow buffers to match, using EGL_NATIVE_VISUAL_ID. */
-    // eglGetConfigAttrib(graphicsBinding_.display, config,
-    // EGL_NATIVE_VISUAL_ID,
-    //                    &format);
-    // surface_ = eglCreateWindowSurface(graphicsBinding_.display, config,
-    //                                   app_->window, nullptr);
-    // if (!surface_) {
-    //   PLOG_FATAL << "eglCreateWindowSurface";
-    //   return false;
-    // }
-
-    // EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
-    // graphicsBinding_.context = eglCreateContext(
-    //     graphicsBinding_.display, config, EGL_NO_CONTEXT, contextAttribs);
-    // if (graphicsBinding_.context == EGL_NO_CONTEXT) {
-    //   PLOG_FATAL << "eglCreateContext failed with error 0x" << std::hex
-    //              << eglGetError();
-    //   return false;
-    // }
-
-    // if (eglMakeCurrent(graphicsBinding_.display, surface_, surface_,
-    //                    graphicsBinding_.context) == EGL_FALSE) {
-    //   PLOG_FATAL << "Unable to eglMakeCurrent";
-    //   return false;
-    // }
 
     // Do NOT use eglChooseConfig, because the Android EGL code pushes in
     // multisample flags in eglChooseConfig when the user has selected the
@@ -274,8 +187,7 @@ struct PlatformImpl {
     enum { MAX_CONFIGS = 1024 };
     EGLConfig configs[MAX_CONFIGS];
     EGLint numConfigs = 0;
-    if (!eglGetConfigs(graphicsBinding_.display, configs, MAX_CONFIGS,
-                       &numConfigs)) {
+    if (!eglGetConfigs(display_, configs, MAX_CONFIGS, &numConfigs)) {
       PLOG_FATAL << "eglGetConfigs";
       return false;
     }
@@ -299,16 +211,14 @@ struct PlatformImpl {
     for (int i = 0; i < numConfigs; i++) {
       EGLint value = 0;
 
-      eglGetConfigAttrib(graphicsBinding_.display, configs[i],
-                         EGL_RENDERABLE_TYPE, &value);
+      eglGetConfigAttrib(display_, configs[i], EGL_RENDERABLE_TYPE, &value);
       if ((value & EGL_OPENGL_ES3_BIT) != EGL_OPENGL_ES3_BIT) {
         continue;
       }
 
       // Without EGL_KHR_surfaceless_context, the config needs to support both
       // pbuffers and window surfaces.
-      eglGetConfigAttrib(graphicsBinding_.display, configs[i], EGL_SURFACE_TYPE,
-                         &value);
+      eglGetConfigAttrib(display_, configs[i], EGL_SURFACE_TYPE, &value);
       if ((value & (EGL_WINDOW_BIT | EGL_PBUFFER_BIT)) !=
           (EGL_WINDOW_BIT | EGL_PBUFFER_BIT)) {
         continue;
@@ -316,8 +226,7 @@ struct PlatformImpl {
 
       int j = 0;
       for (; configAttribs[j] != EGL_NONE; j += 2) {
-        eglGetConfigAttrib(graphicsBinding_.display, configs[i],
-                           configAttribs[j], &value);
+        eglGetConfigAttrib(display_, configs[i], configAttribs[j], &value);
         if (value != configAttribs[j + 1]) {
           break;
         }
@@ -343,32 +252,35 @@ struct PlatformImpl {
     //                           ? EGL_CONTEXT_PRIORITY_LOW_IMG
     //                           : EGL_CONTEXT_PRIORITY_HIGH_IMG;
     // }
-    graphicsBinding_.context = eglCreateContext(
-        graphicsBinding_.display, config, EGL_NO_CONTEXT, contextAttribs);
-    if (graphicsBinding_.context == EGL_NO_CONTEXT) {
+    context_ =
+        eglCreateContext(display_, config, EGL_NO_CONTEXT, contextAttribs);
+    if (context_ == EGL_NO_CONTEXT) {
       PLOG_FATAL << "eglCreateContext() failed: "
                  << EglErrorString(eglGetError());
       return false;
     }
 
     const EGLint surfaceAttribs[] = {EGL_WIDTH, 16, EGL_HEIGHT, 16, EGL_NONE};
-    auto tinySurface = eglCreatePbufferSurface(graphicsBinding_.display, config,
-                                               surfaceAttribs);
+    auto tinySurface =
+        eglCreatePbufferSurface(display_, config, surfaceAttribs);
     if (tinySurface == EGL_NO_SURFACE) {
       PLOG_FATAL << "eglCreatePbufferSurface() failed: "
                  << EglErrorString(eglGetError());
-      eglDestroyContext(graphicsBinding_.display, graphicsBinding_.context);
-      graphicsBinding_.context = EGL_NO_CONTEXT;
+      eglDestroyContext(display_, context_);
+      context_ = EGL_NO_CONTEXT;
       return false;
     }
     surface_ = tinySurface;
 
-    if (!eglMakeCurrent(graphicsBinding_.display, surface_, surface_,
-                        graphicsBinding_.context)) {
+    if (!eglMakeCurrent(display_, surface_, surface_, context_)) {
       return false;
     }
 
     return true;
+  }
+
+  XrSession CreateSession(XrfwSwapchains *swapchains) {
+    return xrfwCreateSessionAndroidOpenGLES(swapchains, display_, context_);
   }
 
   bool BeginFrame() {
@@ -454,10 +366,10 @@ struct PlatformImpl {
 Platform::Platform(struct android_app *state)
     : impl_(new PlatformImpl(state)) {}
 Platform::~Platform() { delete impl_; }
-const void *Platform::InstanceNext() const {
-  return &impl_->instanceCreateInfoAndroid_;
-}
 bool Platform::InitializeGraphics() { return impl_->InitializeGraphics(); }
+XrSession Platform::CreateSession(XrfwSwapchains *swapchains) {
+  return impl_->CreateSession(swapchains);
+}
 bool Platform::BeginFrame() { return impl_->BeginFrame(); }
 
 void Platform::EndFrame(OglRenderer &renderer) {}
@@ -467,10 +379,4 @@ Platform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
       ->image;
 }
 void Platform::Sleep(std::chrono::milliseconds ms) {}
-std::span<const char *> Platform::Extensions() const {
-  return impl_->extensions;
-}
-const void *Platform::GraphicsBinding() const {
-  return &impl_->graphicsBinding_;
-}
 #endif

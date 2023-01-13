@@ -72,7 +72,27 @@ int main(int argc, char **argv) {
 }
 #elif XR_USE_PLATFORM_ANDROID
 #include <android_native_app_glue.h>
-void android_main(struct android_app *state) { start(state); }
+void android_main(struct android_app *state) {
+  if (!xrfwInitializeLoaderAndroid(state)) {
+    return;
+  }
+
+  XrfwInitialization init;
+  xrfwPlatformAndroidOpenGLES(&init, state);
+  auto instance = xrfwCreateInstance(&init);
+  if (!instance) {
+    return;
+  }
+
+  Platform platform(state);
+  if (!platform.InitializeGraphics()) {
+    return;
+  }
+
+  xrSession(platform);
+  xrfwDestroyInstance();
+  return;
+}
 #else
 error("XR_USE_PLATFORM_WIN32 or XR_USE_PLATFORM_ANDROID required")
 #endif

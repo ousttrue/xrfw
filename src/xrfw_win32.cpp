@@ -18,7 +18,6 @@ XRFW_API void xrfwInitLogger() {
   plog::init(plog::debug, &consoleAppender);
 }
 
-// require openxr graphics extension
 static const char *extensions[1] = {
     XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
 };

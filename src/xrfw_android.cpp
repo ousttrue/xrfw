@@ -15,9 +15,54 @@
 
 #include <list>
 
+XRFW_API XrBool32 xrfwInitializeLoaderAndroid(struct android_app *state) {
+  //
+  // Initialize the loader for this platform
+  //
+  PFN_xrInitializeLoaderKHR initializeLoader = nullptr;
+  if (XR_FAILED(
+          xrGetInstanceProcAddr(XR_NULL_HANDLE, "xrInitializeLoaderKHR",
+                                (PFN_xrVoidFunction *)(&initializeLoader)))) {
+    PLOG_FATAL << "no xrInitializeLoaderKHR";
+    return false;
+  }
+
+  XrLoaderInitInfoAndroidKHR loaderInitInfoAndroid{
+      .type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR,
+      .next = NULL,
+      .applicationVM = state->activity->vm,
+      .applicationContext = state->activity->clazz,
+  };
+  if (XR_FAILED(initializeLoader(
+          (const XrLoaderInitInfoBaseHeaderKHR *)&loaderInitInfoAndroid))) {
+    PLOG_FATAL << "xrInitializeLoaderKHR";
+    return false;
+  }
+  return true;
+}
+
 XRFW_API void xrfwInitLogger() {
   static plog::AndroidAppender<plog::TxtFormatter> androidAppender("app");
   plog::init(plog::verbose, &androidAppender);
+}
+
+static const char *extensions[2] = {
+    XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME,
+    XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
+};
+XrInstanceCreateInfoAndroidKHR g_instanceCreateInfoAndroid = {};
+
+XRFW_API void xrfwPlatformAndroidOpenGLES(XrfwInitialization *init,
+                                          android_app *state) {
+  g_instanceCreateInfoAndroid = {
+      .type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
+      .applicationVM = state->activity->vm,
+      .applicationActivity = state->activity->clazz,
+  };
+
+  init->extensionNames = extensions;
+  init->extensionCount = sizeof(extensions) / sizeof(extensions[0]);
+  init->next = &g_instanceCreateInfoAndroid;
 }
 
 bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId) {
@@ -81,5 +126,16 @@ std::vector<XrSwapchainImageBaseHeader *> _xrfwAllocateSwapchainImageStructs(
   g_swapchainImageBuffers.push_back(std::move(swapchainImageBuffer));
 
   return swapchainImageBase;
+}
+
+XRFW_API XrSession xrfwCreateSessionAndroidOpenGLES(XrfwSwapchains *swapchains,
+                                                    EGLDisplay display,
+                                                    EGLContext context) {
+  XrGraphicsBindingOpenGLESAndroidKHR graphicsBinding = {
+      .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR,
+      .display = display,
+      .context = context,
+  };
+  return xrfwCreateSession(swapchains, &graphicsBinding);
 }
 #endif
