@@ -197,8 +197,8 @@ private:
 };
 FBO g_fbo;
 
-int render_gles_scene(uint32_t colorTexture, int width, int height,
-                      const float projection[16], const float view[16]) {
+void render_gles_scene(uint32_t colorTexture, int width, int height,
+                      const float projection[16], const float view[16], void *) {
   int view_x = 0;
   int view_y = 0;
   int view_w = width;
@@ -227,6 +227,4 @@ int render_gles_scene(uint32_t colorTexture, int width, int height,
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  return 0;
 }
