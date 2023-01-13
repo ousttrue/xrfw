@@ -1,11 +1,3 @@
-glfw_dep = dependency('glfw3', 
-    default_options: ['install=true'])
-# gl_dep = dependency('opengl')
-glew_dep = dependency('glew', 
-    default_options:['default_library=static'],
-)
-glm_dep = dependency('glm')
-
 cpp_args = [
     '-DWINDOWS_LEAN_AND_MEAN',
     '-DPLOG_IMPORT', 
@@ -13,7 +5,7 @@ cpp_args = [
 ]
 executable('xrfw_sample', [
     'main.cpp',
-    'platform_win32.cpp',
+    '../platform_win32.cpp',
     'oglrenderer.cpp',
     'ogldrawable.cpp',
 ],

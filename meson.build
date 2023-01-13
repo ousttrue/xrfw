@@ -1,4 +1,4 @@
-project('xrfw', 'cpp',
+project('xrfw', ['cpp', 'c'],
     version: '0.1.0',
     default_options: ['cpp_std=c++20'],
 )
@@ -38,7 +38,17 @@ xrfw_dep = declare_dependency(
     dependencies: [plog_dep, openxr_loader_dep],
 )
 
+glfw_dep = dependency('glfw3', 
+    default_options: ['install=true'])
+# gl_dep = dependency('opengl')
+glew_dep = dependency('glew', 
+    default_options:['default_library=static'],
+)
+glm_dep = dependency('glm')
+
+subdir('thirdparty/common')
 subdir('app_xrfw_sample')
+subdir('app_gl2gridOXR')
 subdir('tests')
 
 meson.override_dependency('xrfw', xrfw_dep)
