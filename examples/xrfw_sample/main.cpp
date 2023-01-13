@@ -1,95 +1,54 @@
 #include <plog/Log.h>
 #include <xrfw.h>
 
-#include "platform.h"
-
-int xrSession(Platform &platform) {
-  // session and swapchains from graphics
-  XrfwSwapchains swapchains;
-  auto session = platform.CreateSession(&swapchains);
-  // auto session = xrfwCreateSession(&swapchains, platform.GraphicsBinding());
-  if (!session) {
-    return 3;
-  }
-
-  OglRenderer renderer;
-
-  // glfw mainloop
-  while (platform.BeginFrame()) {
-
-    // OpenXR handling
-    if (xrfwPollEventsIsSessionActive()) {
-      XrTime frameTime;
-      XrfwViewMatrices viewMatrix;
-      if (xrfwBeginFrame(&frameTime, &viewMatrix)) {
-        // left
-        if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.left)) {
-          auto colorTexture = platform.CastTexture(swapchainImage);
-          renderer.Render(colorTexture, swapchains.leftWidth,
-                          swapchains.leftHeight, viewMatrix.leftProjection,
-                          viewMatrix.leftView);
-          xrfwReleaseSwapchain(swapchains.left);
-        }
-        // right
-        if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.right)) {
-          auto colorTexture = platform.CastTexture(swapchainImage);
-          renderer.Render(colorTexture, swapchains.rightWidth,
-                          swapchains.rightHeight, viewMatrix.rightProjection,
-                          viewMatrix.rightView);
-          xrfwReleaseSwapchain(swapchains.right);
-        }
-      }
-      xrfwEndFrame();
-    } else {
-      // XrSession is not active
-      platform.Sleep(std::chrono::milliseconds(30));
-    }
-
-    platform.EndFrame(renderer);
-  }
-
-  xrfwDestroySession(session);
-  return 0;
-}
+#include "oglrenderer.h"
 
 #ifdef XR_USE_PLATFORM_WIN32
 int main(int argc, char **argv) {
-  XrfwInitialization init;
-  xrfwPlatformWin32OpenGL(&init);
-  auto instance = xrfwCreateInstance(&init);
+  XrfwPlatform platform;
+  auto instance = platform.CreateInstance();
   if (!instance) {
     return 1;
   }
 
-  Platform platform(nullptr);
   if (!platform.InitializeGraphics()) {
     return 2;
   }
 
-  auto ret = xrSession(platform);
+  OglRenderer renderer;
+  auto renderFunc = [](uint32_t colorTexture, int width, int height,
+                       const float projection[16], const float view[16],
+                       void *user) {
+    ((OglRenderer *)user)
+        ->Render(colorTexture, width, height, projection, view);
+  };
+
+  auto ret = xrfwSession(platform, renderFunc, &renderer);
   xrfwDestroyInstance();
   return ret;
 }
 #elif XR_USE_PLATFORM_ANDROID
 #include <android_native_app_glue.h>
 void android_main(struct android_app *state) {
-  if (!xrfwInitializeLoaderAndroid(state)) {
-    return;
-  }
-
-  XrfwInitialization init;
-  xrfwPlatformAndroidOpenGLES(&init, state);
-  auto instance = xrfwCreateInstance(&init);
+  XrfwPlatform platform(state);
+  auto instance = platform.CreateInstance();
   if (!instance) {
     return;
   }
 
-  Platform platform(state);
   if (!platform.InitializeGraphics()) {
     return;
   }
 
-  xrSession(platform);
+  OglRenderer renderer;
+  auto renderFunc = [](uint32_t colorTexture, int width, int height,
+                       const float projection[16], const float view[16],
+                       void *user) {
+    ((OglRenderer *)user)
+        ->Render(colorTexture, width, height, projection, view);
+  };
+
+  xrfwSession(platform, renderFunc, &renderer);
   xrfwDestroyInstance();
   return;
 }

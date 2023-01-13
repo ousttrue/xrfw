@@ -1,4 +1,3 @@
-#include "platform.h"
 #ifdef XR_USE_PLATFORM_WIN32
 #include <windows.h>
 
@@ -137,28 +136,34 @@ struct PlatformImpl {
     return true;
   }
 
-  void EndFrame(OglRenderer &renderer) {
-    // glClear(GL_COLOR_BUFFER_BIT);
-    renderer.Render(0, camera.width, camera.height, camera.projection,
-                    camera.view);
+  void EndFrame(RenderFunc render, void *user) {
+    render(0, camera.width, camera.height, camera.projection, camera.view,
+           user);
     glfwSwapBuffers(window_);
   }
 };
 
-Platform::Platform(struct android_app *) : impl_(new PlatformImpl) {}
-Platform::~Platform() { delete impl_; }
-bool Platform::InitializeGraphics() { return impl_->InitializeGraphics(); }
-XrSession Platform::CreateSession(XrfwSwapchains *swapchains) {
+XrfwPlatform::XrfwPlatform(struct android_app *) : impl_(new PlatformImpl) {}
+XrfwPlatform::~XrfwPlatform() { delete impl_; }
+XrInstance XrfwPlatform::CreateInstance() {
+  XrfwInitialization init;
+  xrfwPlatformWin32OpenGL(&init);
+  return xrfwCreateInstance(&init);
+}
+bool XrfwPlatform::InitializeGraphics() { return impl_->InitializeGraphics(); }
+XrSession XrfwPlatform::CreateSession(XrfwSwapchains *swapchains) {
   return impl_->CreateSession(swapchains);
 }
-bool Platform::BeginFrame() { return impl_->BeginFrame(); }
-void Platform::EndFrame(OglRenderer &renderer) { impl_->EndFrame(renderer); }
+bool XrfwPlatform::BeginFrame() { return impl_->BeginFrame(); }
+void XrfwPlatform::EndFrame(RenderFunc render, void *user) {
+  impl_->EndFrame(render, user);
+}
 uint32_t
-Platform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
+XrfwPlatform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
   return reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
       ->image;
 }
-void Platform::Sleep(std::chrono::milliseconds ms) {
+void XrfwPlatform::Sleep(std::chrono::milliseconds ms) {
   ::Sleep((uint32_t)ms.count());
 }
 #endif

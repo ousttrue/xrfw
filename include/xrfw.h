@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <openxr/openxr.h>
 #include <ostream>
 #include <span>
@@ -76,6 +77,71 @@ XRFW_API XrBool32 xrfwEndFrame();
 #else
 #error "XR_USE_PLATFORM required"
 #endif
+
+//
+using RenderFunc = void (*)(uint32_t colorTexture, int width, int height,
+                            const float projection[16], const float view[16],
+                            void *user);
+
+struct XrfwPlatform {
+  struct PlatformImpl *impl_ = nullptr;
+  XrfwPlatform(struct android_app *state = nullptr);
+  ~XrfwPlatform();
+  bool InitializeLoader();
+  XrInstance CreateInstance();
+  bool InitializeGraphics();
+  XrSession CreateSession(struct XrfwSwapchains *swapchains);
+  bool BeginFrame();
+  void EndFrame(RenderFunc render, void *user);
+  uint32_t CastTexture(const XrSwapchainImageBaseHeader *swapchainImage);
+  void Sleep(std::chrono::milliseconds ms);
+};
+
+inline int xrfwSession(XrfwPlatform &platform, RenderFunc render, void *user) {
+  // session and swapchains from graphics
+  XrfwSwapchains swapchains;
+  auto session = platform.CreateSession(&swapchains);
+  if (!session) {
+    return 3;
+  }
+
+  // glfw mainloop
+  while (platform.BeginFrame()) {
+
+    // OpenXR handling
+    if (xrfwPollEventsIsSessionActive()) {
+      XrTime frameTime;
+      XrfwViewMatrices viewMatrix;
+      if (xrfwBeginFrame(&frameTime, &viewMatrix)) {
+        // left
+        if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.left)) {
+          auto colorTexture = platform.CastTexture(swapchainImage);
+          render(colorTexture, swapchains.leftWidth,
+                          swapchains.leftHeight, viewMatrix.leftProjection,
+                          viewMatrix.leftView, user);
+          xrfwReleaseSwapchain(swapchains.left);
+        }
+        // right
+        if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.right)) {
+          auto colorTexture = platform.CastTexture(swapchainImage);
+          render(colorTexture, swapchains.rightWidth,
+                          swapchains.rightHeight, viewMatrix.rightProjection,
+                          viewMatrix.rightView, user);
+          xrfwReleaseSwapchain(swapchains.right);
+        }
+      }
+      xrfwEndFrame();
+    } else {
+      // XrSession is not active
+      platform.Sleep(std::chrono::milliseconds(30));
+    }
+
+    platform.EndFrame(render, user);
+  }
+
+  xrfwDestroySession(session);
+  return 0;
+}
 
 //
 #include <iosfwd>

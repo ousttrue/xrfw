@@ -1,7 +1,6 @@
 #ifdef XR_USE_PLATFORM_ANDROID
-#include "platform.h"
-#include <xrfw.h>
 #include <android_native_app_glue.h>
+#include <xrfw.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -54,7 +53,7 @@ struct ksGpuLimits {
   int maxSamples;
 };
 
-char *EglErrorString(const EGLint error) {
+const char *EglErrorString(const EGLint error) {
   switch (error) {
   case EGL_SUCCESS:
     return "EGL_SUCCESS";
@@ -169,6 +168,16 @@ struct PlatformImpl {
     app_ = state;
   }
   ~PlatformImpl() {}
+
+  XrInstance CreateInstance() {
+    if (!xrfwInitializeLoaderAndroid(app_)) {
+      return {};
+    }
+
+    XrfwInitialization init;
+    xrfwPlatformAndroidOpenGLES(&init, app_);
+    return xrfwCreateInstance(&init);
+  }
 
   bool InitializeLoader() { return xrfwInitializeLoaderAndroid(app_); }
 
@@ -363,20 +372,21 @@ struct PlatformImpl {
   }
 };
 
-Platform::Platform(struct android_app *state)
+XrfwPlatform::XrfwPlatform(struct android_app *state)
     : impl_(new PlatformImpl(state)) {}
-Platform::~Platform() { delete impl_; }
-bool Platform::InitializeGraphics() { return impl_->InitializeGraphics(); }
-XrSession Platform::CreateSession(XrfwSwapchains *swapchains) {
+XrfwPlatform::~XrfwPlatform() { delete impl_; }
+XrInstance XrfwPlatform::CreateInstance() { return impl_->CreateInstance(); }
+bool XrfwPlatform::InitializeGraphics() { return impl_->InitializeGraphics(); }
+XrSession XrfwPlatform::CreateSession(XrfwSwapchains *swapchains) {
   return impl_->CreateSession(swapchains);
 }
-bool Platform::BeginFrame() { return impl_->BeginFrame(); }
+bool XrfwPlatform::BeginFrame() { return impl_->BeginFrame(); }
 
-void Platform::EndFrame(OglRenderer &renderer) {}
+void XrfwPlatform::EndFrame(RenderFunc render, void *user) {}
 uint32_t
-Platform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
+XrfwPlatform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
   return reinterpret_cast<const XrSwapchainImageOpenGLESKHR *>(swapchainImage)
       ->image;
 }
-void Platform::Sleep(std::chrono::milliseconds ms) {}
+void XrfwPlatform::Sleep(std::chrono::milliseconds ms) {}
 #endif
