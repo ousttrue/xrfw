@@ -49,6 +49,7 @@ glm_dep = dependency('glm')
 subdir('thirdparty/common')
 subdir('app_xrfw_sample')
 subdir('app_gl2gridOXR')
+subdir('app_BasicXrApp')
 subdir('tests')
 
 meson.override_dependency('xrfw', xrfw_dep)
