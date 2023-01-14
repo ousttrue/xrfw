@@ -16,16 +16,20 @@ struct XrfwSwapchains {
   int rightHeight;
 };
 
-bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId);
 std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session);
 int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats);
 std::vector<XrSwapchainImageBaseHeader *>
 _xrfwAllocateSwapchainImageStructs(uint32_t capacity,
                                    const XrSwapchainCreateInfo &);
 
+using GraphicsRequirementsFunc = bool (*)(XrInstance instance,
+                                          XrSystemId systemId,
+                                          void *outGraphicsRequirements);
 struct XrfwInitialization {
   const char *const *extensionNames = nullptr;
   uint32_t extensionCount = 0;
+  GraphicsRequirementsFunc graphicsRequirementsCallback = nullptr;
+  void *graphicsRequirements = nullptr;
   const void *next = nullptr;
 };
 
@@ -84,7 +88,7 @@ using RenderFunc = void (*)(uint32_t colorTexture, int width, int height,
 
 //
 
-template<typename T>
+template <typename T>
 inline int xrfwSession(T &platform, RenderFunc render, void *user) {
   // session and swapchains from graphics
   XrfwSwapchains swapchains;
@@ -104,17 +108,15 @@ inline int xrfwSession(T &platform, RenderFunc render, void *user) {
         // left
         if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.left)) {
           auto colorTexture = platform.CastTexture(swapchainImage);
-          render(colorTexture, swapchains.leftWidth,
-                          swapchains.leftHeight, viewMatrix.leftProjection,
-                          viewMatrix.leftView, user);
+          render(colorTexture, swapchains.leftWidth, swapchains.leftHeight,
+                 viewMatrix.leftProjection, viewMatrix.leftView, user);
           xrfwReleaseSwapchain(swapchains.left);
         }
         // right
         if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.right)) {
           auto colorTexture = platform.CastTexture(swapchainImage);
-          render(colorTexture, swapchains.rightWidth,
-                          swapchains.rightHeight, viewMatrix.rightProjection,
-                          viewMatrix.rightView, user);
+          render(colorTexture, swapchains.rightWidth, swapchains.rightHeight,
+                 viewMatrix.rightProjection, viewMatrix.rightView, user);
           xrfwReleaseSwapchain(swapchains.right);
         }
       }

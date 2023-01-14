@@ -18,15 +18,13 @@ XRFW_API void xrfwInitLogger() {
   plog::init(plog::debug, &consoleAppender);
 }
 
-static const char *extensions[1] = {
+#ifdef XR_USE_GRAPHICS_API_OPENGL
+static const char *opengl_extensions[1] = {
     XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
 };
-XRFW_API void xrfwPlatformWin32OpenGL(XrfwInitialization *init) {
-  init->extensionNames = extensions;
-  init->extensionCount = _countof(extensions);
-}
-
-bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId) {
+static bool graphicsRequirementsWin32OpenGL(XrInstance instance,
+                                            XrSystemId systemId,
+                                            void *outGraphicsRequirements) {
 
   PFN_xrGetOpenGLGraphicsRequirementsKHR pfnGetOpenGLGraphicsRequirementsKHR =
       nullptr;
@@ -38,17 +36,22 @@ bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId) {
     return false;
   }
 
-  XrGraphicsRequirementsOpenGLKHR graphicsRequirements = {
-      .type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR,
-  };
+  auto graphicsRequirements =
+      (XrGraphicsRequirementsOpenGLKHR *)outGraphicsRequirements;
+  graphicsRequirements->type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR;
   result = pfnGetOpenGLGraphicsRequirementsKHR(instance, systemId,
-                                               &graphicsRequirements);
+                                               graphicsRequirements);
   if (XR_FAILED(result)) {
     PLOG_FATAL << "xrGetOpenGLGraphicsRequirementsKHR";
     return false;
   }
 
   return true;
+}
+XRFW_API void xrfwInitExtensionsWin32OpenGL(XrfwInitialization *init) {
+  init->extensionNames = opengl_extensions;
+  init->extensionCount = _countof(opengl_extensions);
+  init->graphicsRequirementsCallback = &graphicsRequirementsWin32OpenGL;
 }
 
 int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats) {
@@ -98,12 +101,60 @@ std::vector<XrSwapchainImageBaseHeader *> _xrfwAllocateSwapchainImageStructs(
 
 XRFW_API XrSession xrfwCreateSessionWin32OpenGL(XrfwSwapchains *swapchains,
                                                 HDC dc, HGLRC glrc) {
-  XrGraphicsBindingOpenGLWin32KHR graphicsBindingGL = {
+  XrGraphicsBindingOpenGLWin32KHR graphicsBinding = {
       .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
       .next = nullptr,
       .hDC = dc,
       .hGLRC = glrc,
   };
-  return xrfwCreateSession(swapchains, &graphicsBindingGL);
+  return xrfwCreateSession(swapchains, &graphicsBinding);
 }
+#endif
+
+#ifdef XR_USE_GRAPHICS_API_D3D11
+static const char *d3d11_extensions[1] = {
+    XR_KHR_D3D11_ENABLE_EXTENSION_NAME,
+};
+static bool graphicsRequirementsWin32D3D11(XrInstance instance,
+                                           XrSystemId systemId,
+                                           void *outGraphicsRequirements) {
+
+  PFN_xrGetD3D11GraphicsRequirementsKHR pfnGetD3D11GraphicsRequirementsKHR =
+      nullptr;
+  auto result = xrGetInstanceProcAddr(
+      instance, "xrGetD3D11GraphicsRequirementsKHR",
+      (PFN_xrVoidFunction *)(&pfnGetD3D11GraphicsRequirementsKHR));
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrGetInstanceProcAddr: xrGetD3D11GraphicsRequirementsKHR";
+    return false;
+  }
+
+  auto graphicsRequirements =
+      (XrGraphicsRequirementsD3D11KHR *)outGraphicsRequirements;
+  graphicsRequirements->type = XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR;
+  result = pfnGetD3D11GraphicsRequirementsKHR(instance, systemId,
+                                              graphicsRequirements);
+  if (XR_FAILED(result)) {
+    PLOG_FATAL << "xrGetD3D11GraphicsRequirementsKHR";
+    return false;
+  }
+
+  return true;
+}
+XRFW_API void xrfwInitExtensionsWin32D3D11(XrfwInitialization *init) {
+  init->extensionNames = d3d11_extensions;
+  init->extensionCount = _countof(d3d11_extensions);
+  init->graphicsRequirementsCallback = &graphicsRequirementsWin32D3D11;
+}
+
+XRFW_API XrSession xrfwCreateSessionWin32D3D11(XrfwSwapchains *swapchains,
+                                               ID3D11Device *device) {
+  XrGraphicsBindingD3D11KHR graphicsBinding = {
+      .type = XR_TYPE_GRAPHICS_BINDING_D3D11_KHR,
+      .next = nullptr,
+      .device = device,
+  };
+  return xrfwCreateSession(swapchains, &graphicsBinding);
+}
+#endif
 #endif

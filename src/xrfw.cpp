@@ -153,7 +153,8 @@ XRFW_API XrInstance xrfwCreateInstance(XrfwInitialization *init,
     return nullptr;
   }
 
-  if (!_xrfwGraphicsRequirements(g_instance, g_systemId)) {
+  if (!init->graphicsRequirementsCallback(g_instance, g_systemId,
+                                          init->graphicsRequirements)) {
     return nullptr;
   }
 

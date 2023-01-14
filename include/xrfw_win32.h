@@ -4,7 +4,7 @@
 #include <Windows.h>
 
 #if XR_USE_GRAPHICS_API_OPENGL
-XRFW_API void xrfwPlatformWin32OpenGL(XrfwInitialization *init);
+XRFW_API void xrfwInitExtensionsWin32OpenGL(XrfwInitialization *init);
 XRFW_API XrSession xrfwCreateSessionWin32OpenGL(XrfwSwapchains *swapchains,
                                                 HDC dc, HGLRC glrc);
 
@@ -25,8 +25,9 @@ struct XrfwPlatformWin32OpenGL {
 
 #if XR_USE_GRAPHICS_API_D3D11
 #include <d3d11.h>
-XRFW_API void xrfwPlatformWin32D3D11(XrfwInitialization *init);
-XRFW_API XrSession xrfwCreateSessionWin32D3D11(XrfwSwapchains *swapchains);
+XRFW_API void xrfwInitExtensionsWin32D3D11(XrfwInitialization *init);
+XRFW_API XrSession xrfwCreateSessionWin32D3D11(XrfwSwapchains *swapchains,
+                                               ID3D11Device *device);
 
 struct XrfwPlatformWin32D3D11 {
   struct PlatformWin32D3D11Impl *impl_ = nullptr;
