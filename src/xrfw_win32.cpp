@@ -16,6 +16,29 @@
 #include <list>
 #include <span>
 #include <unordered_map>
+#include <vector>
+
+template <typename T, XrStructureType TYPE> struct SwapchainImageList {
+  static std::list<std::vector<T>> s_swapchainImageBuffers;
+  static std::vector<XrSwapchainImageBaseHeader *>
+  allocateSwapchainImageStructs(
+      uint32_t size, const XrSwapchainCreateInfo & /*swapchainCreateInfo*/) {
+    // Allocate and initialize the buffer of image structs (must be sequential
+    // in memory for xrEnumerateSwapchainImages). Return back an array of
+    // pointers to each swapchain image struct so the consumer doesn't need to
+    // know the type/size.
+    std::vector<T> swapchainImageBuffer(size);
+    std::vector<XrSwapchainImageBaseHeader *> swapchainImageBase;
+    for (T &image : swapchainImageBuffer) {
+      image.type = TYPE; // XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR;
+      swapchainImageBase.push_back(
+          reinterpret_cast<XrSwapchainImageBaseHeader *>(&image));
+    }
+    // Keep the buffer alive by moving it into the list of buffers.
+    s_swapchainImageBuffers.push_back(std::move(swapchainImageBuffer));
+    return swapchainImageBase;
+  }
+};
 
 XRFW_API void xrfwInitLogger() {
   static plog::ColorConsoleAppender<plog::MyFormatter> consoleAppender;
@@ -25,6 +48,13 @@ XRFW_API void xrfwInitLogger() {
 extern XrfwInitialization g_init;
 
 #ifdef XR_USE_GRAPHICS_API_OPENGL
+using SwapchainImageListOpenGL =
+    SwapchainImageList<XrSwapchainImageOpenGLKHR,
+                       XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR>;
+template <>
+std::list<std::vector<XrSwapchainImageOpenGLKHR>>
+    SwapchainImageListOpenGL::s_swapchainImageBuffers = {};
+
 static const char *opengl_extensions[1] = {
     XR_KHR_OPENGL_ENABLE_EXTENSION_NAME,
 };
@@ -80,28 +110,6 @@ selectColorSwapchainFormatWin32OpenGL(std::span<int64_t> swapchainFormats) {
   return *swapchainFormatIt;
 }
 
-static std::list<std::vector<XrSwapchainImageOpenGLKHR>>
-    g_swapchainImageBuffers;
-static std::vector<XrSwapchainImageBaseHeader *> allocateSwapchainImageStructs(
-    uint32_t capacity, const XrSwapchainCreateInfo & /*swapchainCreateInfo*/) {
-  // Allocate and initialize the buffer of image structs (must be sequential in
-  // memory for xrEnumerateSwapchainImages). Return back an array of pointers to
-  // each swapchain image struct so the consumer doesn't need to know the
-  // type/size.
-  std::vector<XrSwapchainImageOpenGLKHR> swapchainImageBuffer(capacity);
-  std::vector<XrSwapchainImageBaseHeader *> swapchainImageBase;
-  for (XrSwapchainImageOpenGLKHR &image : swapchainImageBuffer) {
-    image.type = XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR;
-    swapchainImageBase.push_back(
-        reinterpret_cast<XrSwapchainImageBaseHeader *>(&image));
-  }
-
-  // Keep the buffer alive by moving it into the list of buffers.
-  g_swapchainImageBuffers.push_back(std::move(swapchainImageBuffer));
-
-  return swapchainImageBase;
-}
-
 XRFW_API void xrfwInitExtensionsWin32OpenGL(
     XrGraphicsRequirementsOpenGLKHR *graphicsRequirements) {
   g_init.extensionNames = opengl_extensions;
@@ -110,7 +118,8 @@ XRFW_API void xrfwInitExtensionsWin32OpenGL(
   g_init.graphicsRequirementsCallback = &graphicsRequirementsWin32OpenGL;
   g_init.selectColorSwapchainFormatCallback =
       &selectColorSwapchainFormatWin32OpenGL;
-  g_init.allocateSwapchainImageStructsCallback = &allocateSwapchainImageStructs;
+  g_init.allocateSwapchainImageStructsCallback =
+      &SwapchainImageListOpenGL::allocateSwapchainImageStructs;
 }
 
 XRFW_API XrSession xrfwCreateSessionWin32OpenGL(XrfwSwapchains *swapchains,
@@ -136,6 +145,12 @@ xrfwCastTextureWin32OpenGL(const XrSwapchainImageBaseHeader *swapchainImage) {
 #endif
 
 #ifdef XR_USE_GRAPHICS_API_D3D11
+using SwapchainImageListD3D11 =
+    SwapchainImageList<XrSwapchainImageD3D11KHR,
+                       XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR>;
+template <>
+std::list<std::vector<XrSwapchainImageD3D11KHR>>
+    SwapchainImageListD3D11::s_swapchainImageBuffers = {};
 static const char *d3d11_extensions[1] = {
     XR_KHR_D3D11_ENABLE_EXTENSION_NAME,
 };
@@ -166,16 +181,44 @@ static bool graphicsRequirementsWin32D3D11(XrInstance instance,
   return true;
 }
 
+static int64_t
+selectColorSwapchainFormatD3D11(std::span<int64_t> swapchainFormats) {
+  const static std::vector<DXGI_FORMAT> SupportedColorFormats = {
+      DXGI_FORMAT_R8G8B8A8_UNORM,
+      DXGI_FORMAT_B8G8R8A8_UNORM,
+      DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+      DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
+  };
+  for (auto format : swapchainFormats) {
+    auto found = std::find(SupportedColorFormats.begin(),
+                           SupportedColorFormats.end(), format);
+    if (found != SupportedColorFormats.end()) {
+      return format;
+    }
+  }
+  throw std::runtime_error(
+      "No runtime swapchain format supported for color swapchain");
+}
+
+// const std::vector<DXGI_FORMAT> &SupportedDepthFormats() const override {
+//   const static std::vector<DXGI_FORMAT> SupportedDepthFormats = {
+//       DXGI_FORMAT_D32_FLOAT,
+//       DXGI_FORMAT_D16_UNORM,
+//       DXGI_FORMAT_D24_UNORM_S8_UINT,
+//       DXGI_FORMAT_D32_FLOAT_S8X24_UINT,
+//   };
+//   return SupportedDepthFormats;
+// }
+
 XRFW_API void xrfwInitExtensionsWin32D3D11(
     XrGraphicsRequirementsD3D11KHR *graphicsRequirements) {
   g_init.extensionNames = d3d11_extensions;
   g_init.extensionCount = _countof(d3d11_extensions);
   g_init.graphicsRequirements = graphicsRequirements;
   g_init.graphicsRequirementsCallback = &graphicsRequirementsWin32D3D11;
-  // g_init.selectColorSwapchainFormatCallback =
-  //     &selectColorSwapchainFormatWin32OpenGL;
-  // g_init.allocateSwapchainImageStructsCallback =
-  // &allocateSwapchainImageStructs;
+  g_init.selectColorSwapchainFormatCallback = &selectColorSwapchainFormatD3D11;
+  g_init.allocateSwapchainImageStructsCallback =
+      &SwapchainImageListD3D11::allocateSwapchainImageStructs;
 }
 
 XRFW_API XrSession xrfwCreateSessionWin32D3D11(XrfwSwapchains *swapchains,

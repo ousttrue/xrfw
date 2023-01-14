@@ -101,7 +101,7 @@ bool XrfwPlatformWin32D3D11::InitializeGraphics() {
 XrSession XrfwPlatformWin32D3D11::CreateSession(XrfwSwapchains *swapchains) {
   return impl_->CreateSession(swapchains);
 }
-bool XrfwPlatformWin32D3D11::BeginFrame() { return {}; }
+bool XrfwPlatformWin32D3D11::BeginFrame() { return true; }
 void XrfwPlatformWin32D3D11::EndFrame(RenderFunc render, void *user) {}
 void XrfwPlatformWin32D3D11::Sleep(std::chrono::milliseconds ms) { {}; }
 #endif
