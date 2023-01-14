@@ -166,7 +166,7 @@ XRFW_API XrInstance xrfwCreateInstance(XrApplicationInfo *pAppInfo) {
 XRFW_API void xrfwDestroyInstance() { xrDestroyInstance(g_instance); }
 
 XRFW_API XrSession xrfwCreateSession(XrfwSwapchains *swapchains,
-                                     const void *next) {
+                                     const void *next, bool useVrpt) {
   XrSessionCreateInfo sessionCreateInfo = {
       .type = XR_TYPE_SESSION_CREATE_INFO,
       .next = next, // &graphicsBindingGL,
@@ -281,17 +281,24 @@ XRFW_API XrSession xrfwCreateSession(XrfwSwapchains *swapchains,
   if (!xrfwGetViewConfigurationViews(viewConfigurationViews, 2)) {
     return {};
   }
-  swapchains->left =
-      xrfwCreateSwapchain(viewConfigurationViews[0], &swapchains->leftWidth,
-                          &swapchains->leftHeight);
-  if (!swapchains->left) {
-    return {};
-  }
-  swapchains->right =
-      xrfwCreateSwapchain(viewConfigurationViews[1], &swapchains->rightWidth,
-                          &swapchains->rightHeight);
-  if (!swapchains->right) {
-    return {};
+
+  if (useVrpt) {
+    swapchains->leftOrVrpt = xrfwCreateSwapchain(
+        viewConfigurationViews[0], &swapchains->width, &swapchains->height, 2);
+    if (!swapchains->leftOrVrpt) {
+      return {};
+    }
+  } else {
+    swapchains->leftOrVrpt = xrfwCreateSwapchain(
+        viewConfigurationViews[0], &swapchains->width, &swapchains->height, 1);
+    if (!swapchains->leftOrVrpt) {
+      return {};
+    }
+    swapchains->right = xrfwCreateSwapchain(
+        viewConfigurationViews[1], &swapchains->width, &swapchains->height, 1);
+    if (!swapchains->right) {
+      return {};
+    }
   }
 
   return g_session;
@@ -338,7 +345,7 @@ XRFW_API XrBool32 xrfwGetViewConfigurationViews(
 
 XRFW_API XrSwapchain
 xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
-                    int *width, int *height) {
+                    int *width, int *height, uint32_t arraySize) {
   auto swapchainFormats = _xrfwGetSwapchainFormats(g_session);
   auto colorSwapchainFormat =
       g_init.selectColorSwapchainFormatCallback(swapchainFormats);
@@ -362,7 +369,7 @@ xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
       .width = viewConfigurationView.recommendedImageRectWidth,
       .height = viewConfigurationView.recommendedImageRectHeight,
       .faceCount = 1,
-      .arraySize = 1,
+      .arraySize = arraySize,
       .mipCount = 1,
   };
 

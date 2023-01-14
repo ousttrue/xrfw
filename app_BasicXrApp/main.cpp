@@ -18,8 +18,10 @@ int main(int argc, char **argv) {
 
   auto graphics = sample::CreateCubeGraphics();
   auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
-                       int width, int height, const float projection[16],
-                       const float view[16], void *user) {
+                       const XrSwapchainImageBaseHeader *, int width,
+                       int height, const float projection[16],
+                       const float view[16], const float rightProjection[16],
+                       const float rightView[16], void *user) {
     ((sample::IGraphicsPluginD3D11 *)user)
         ->Render(xrfwCastTextureD3D11(swapchainImage), width, height,
                  projection, view);

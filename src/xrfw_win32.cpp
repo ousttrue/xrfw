@@ -130,7 +130,7 @@ XRFW_API XrSession xrfwCreateSessionWin32OpenGL(XrfwSwapchains *swapchains,
       .hDC = dc,
       .hGLRC = glrc,
   };
-  return xrfwCreateSession(swapchains, &graphicsBinding);
+  return xrfwCreateSession(swapchains, &graphicsBinding, false);
 }
 
 XRFW_API uint32_t
@@ -228,7 +228,7 @@ XRFW_API XrSession xrfwCreateSessionWin32D3D11(XrfwSwapchains *swapchains,
       .next = nullptr,
       .device = device,
   };
-  return xrfwCreateSession(swapchains, &graphicsBinding);
+  return xrfwCreateSession(swapchains, &graphicsBinding, true);
 }
 
 ID3D11Texture2D *
