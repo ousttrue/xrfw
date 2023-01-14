@@ -6,14 +6,14 @@ template <typename T> int run(T &platform) {
   init_gles_scene();
   auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
                        const XrSwapchainImageBaseHeader *rightSwapchainImage,
-                       int width, int height, const float projection[16],
+                       const XrfwSwapchains &info, const float projection[16],
                        const float view[16], const float rightProjection[16],
                        const float rightView[16], void *user) {
-    render_gles_scene(xrfwCastTextureWin32OpenGL(swapchainImage), width, height,
-                      projection, view);
+    render_gles_scene(xrfwCastTextureWin32OpenGL(swapchainImage), info.width,
+                      info.height, projection, view);
     if (rightProjection) {
-      render_gles_scene(xrfwCastTextureWin32OpenGL(rightSwapchainImage), width,
-                        height, rightProjection, rightView);
+      render_gles_scene(xrfwCastTextureWin32OpenGL(rightSwapchainImage),
+                        info.width, info.height, rightProjection, rightView);
     }
   };
   return xrfwSession(platform, renderFunc, nullptr);

@@ -140,8 +140,12 @@ struct PlatformWin32OpenGLImpl {
   }
 
   void EndFrame(RenderFunc render, void *user) {
-    render(0, 0, camera.width, camera.height, camera.projection, camera.view,
-           nullptr, nullptr, user);
+    XrfwSwapchains info{
+        .format = 0,
+        .width = camera.width,
+        .height = camera.height,
+    };
+    render(0, 0, info, camera.projection, camera.view, nullptr, nullptr, user);
     glfwSwapBuffers(window_);
   }
 };

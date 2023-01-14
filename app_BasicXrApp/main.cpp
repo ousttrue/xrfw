@@ -18,13 +18,14 @@ int main(int argc, char **argv) {
 
   auto graphics = sample::CreateCubeGraphics();
   auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
-                       const XrSwapchainImageBaseHeader *, int width,
-                       int height, const float projection[16],
+                       const XrSwapchainImageBaseHeader *,
+                       const XrfwSwapchains &info, const float projection[16],
                        const float view[16], const float rightProjection[16],
                        const float rightView[16], void *user) {
     ((sample::IGraphicsPluginD3D11 *)user)
-        ->Render(xrfwCastTextureD3D11(swapchainImage), width, height,
-                 projection, view);
+        ->RenderView(xrfwCastTextureD3D11(swapchainImage),
+                     (DXGI_FORMAT)info.format, info.width, info.height,
+                     projection, view, rightProjection, rightView);
   };
   auto ret = xrfwSession(platform, renderFunc, graphics.get());
 

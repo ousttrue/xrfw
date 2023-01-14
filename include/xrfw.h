@@ -8,10 +8,11 @@
 #include <vector>
 
 struct XrfwSwapchains {
-  XrSwapchain leftOrVrpt;
-  XrSwapchain right;
-  int width;
-  int height;
+  XrSwapchain leftOrVrpt = nullptr;
+  XrSwapchain right = nullptr;
+  uint64_t format = 0;
+  int width = 0;
+  int height = 0;
 };
 
 #ifdef XR_USE_PLATFORM_WIN32
@@ -36,9 +37,9 @@ XRFW_API XrSpace xrfwAppSpace();
 
 XRFW_API XrBool32 xrfwGetViewConfigurationViews(
     XrViewConfigurationView *viewConfigurationViews, uint32_t viewCount);
-XRFW_API XrSwapchain
-xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
-                    int *width, int *height, uint32_t arraySize);
+XRFW_API XrSwapchain xrfwCreateSwapchain(
+    const XrViewConfigurationView &viewConfigurationView, uint64_t *format,
+    int *width, int *height, uint32_t arraySize);
 XRFW_API const XrSwapchainImageBaseHeader *
 xrfwAcquireSwapchain(XrSwapchain swapchain);
 XRFW_API void xrfwReleaseSwapchain(XrSwapchain swapchain);
@@ -54,11 +55,12 @@ struct XrfwViewMatrices {
 XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrfwViewMatrices *viewMatrix);
 XRFW_API XrBool32 xrfwEndFrame();
 
-using RenderFunc = void (*)(
-    const XrSwapchainImageBaseHeader *leftOrVrptSwapchainImage,
-    const XrSwapchainImageBaseHeader *rightSwapchainImage, int width,
-    int height, const float projection[16], const float view[16],
-    const float rightProjection[16], const float rightView[16], void *user);
+using RenderFunc =
+    void (*)(const XrSwapchainImageBaseHeader *leftOrVrptSwapchainImage,
+             const XrSwapchainImageBaseHeader *rightSwapchainImage,
+             const XrfwSwapchains &info, const float projection[16],
+             const float view[16], const float rightProjection[16],
+             const float rightView[16], void *user);
 
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw_win32.h"
@@ -73,7 +75,7 @@ using RenderFunc = void (*)(
 template <typename T>
 inline int xrfwSession(T &platform, const RenderFunc &render, void *user) {
   // session and swapchains from graphics
-  XrfwSwapchains swapchains;
+  XrfwSwapchains swapchains = {};
   auto session = platform.CreateSession(&swapchains);
   if (!session) {
     return 3;
@@ -91,7 +93,7 @@ inline int xrfwSession(T &platform, const RenderFunc &render, void *user) {
         if (use_vrpt) {
           if (auto swapchainImage =
                   xrfwAcquireSwapchain(swapchains.leftOrVrpt)) {
-            render(swapchainImage, nullptr, swapchains.width, swapchains.height,
+            render(swapchainImage, nullptr, swapchains,
                    viewMatrix.leftProjection, viewMatrix.leftView,
                    viewMatrix.rightProjection, viewMatrix.rightView, user);
             xrfwReleaseSwapchain(swapchains.leftOrVrpt);
@@ -101,10 +103,9 @@ inline int xrfwSession(T &platform, const RenderFunc &render, void *user) {
                   xrfwAcquireSwapchain(swapchains.leftOrVrpt)) {
             if (auto rightSwapchainImage =
                     xrfwAcquireSwapchain(swapchains.right)) {
-              render(leftSwapchainImage, rightSwapchainImage, swapchains.width,
-                     swapchains.height, viewMatrix.leftProjection,
-                     viewMatrix.leftView, viewMatrix.rightProjection,
-                     viewMatrix.rightView, user);
+              render(leftSwapchainImage, rightSwapchainImage, swapchains,
+                     viewMatrix.leftProjection, viewMatrix.leftView,
+                     viewMatrix.rightProjection, viewMatrix.rightView, user);
               xrfwReleaseSwapchain(swapchains.right);
             }
             xrfwReleaseSwapchain(swapchains.leftOrVrpt);

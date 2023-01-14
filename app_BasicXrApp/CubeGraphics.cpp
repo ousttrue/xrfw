@@ -195,23 +195,20 @@ struct CubeGraphics : sample::IGraphicsPluginD3D11 {
     return SupportedDepthFormats;
   }
 
-  void Render(ID3D11Texture2D *colorTexture, int width, int height,
-              const float projection[16], const float view[16]) override {}
+  void RenderView(ID3D11Texture2D *colorTexture,
+                  DXGI_FORMAT colorSwapchainFormat, int width, int height,
+                  const float projection[16], const float view[16],
+                  const float rightProjection[16],
+                  const float rightView[16]) override {
 
-  void
-  RenderView(const XrRect2Di &imageRect, const float renderTargetClearColor[4],
-             const std::vector<xr::math::ViewProjection> &viewProjections,
-             DXGI_FORMAT colorSwapchainFormat, ID3D11Texture2D *colorTexture,
-             DXGI_FORMAT depthSwapchainFormat, ID3D11Texture2D *depthTexture,
-             const std::vector<const sample::Cube *> &cubes) override {
-    const uint32_t viewInstanceCount = (uint32_t)viewProjections.size();
+    std::vector<const sample::Cube *> cubes;
+
+    const uint32_t viewInstanceCount = 2; // (uint32_t)viewProjections.size();
     CHECK_MSG(viewInstanceCount <= CubeShader::MaxViewInstance,
               "Sample shader supports 2 or fewer view instances. Adjust shader "
               "to accommodate more.")
 
-    CD3D11_VIEWPORT viewport(
-        (float)imageRect.offset.x, (float)imageRect.offset.y,
-        (float)imageRect.extent.width, (float)imageRect.extent.height);
+    CD3D11_VIEWPORT viewport((float)0, (float)0, (float)width, (float)height);
     m_deviceContext->RSSetViewports(1, &viewport);
 
     // Create RenderTargetView with the original swapchain format (swapchain
@@ -222,31 +219,37 @@ struct CubeGraphics : sample::IGraphicsPluginD3D11 {
     CHECK_HRCMD(m_device->CreateRenderTargetView(
         colorTexture, &renderTargetViewDesc, renderTargetView.put()));
 
-    // Create a DepthStencilView with the original swapchain format (swapchain
-    // image is typeless)
-    winrt::com_ptr<ID3D11DepthStencilView> depthStencilView;
-    CD3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc(
-        D3D11_DSV_DIMENSION_TEXTURE2DARRAY, depthSwapchainFormat);
-    CHECK_HRCMD(m_device->CreateDepthStencilView(
-        depthTexture, &depthStencilViewDesc, depthStencilView.put()));
+    // // Create a DepthStencilView with the original swapchain format
+    // (swapchain
+    // // image is typeless)
+    // winrt::com_ptr<ID3D11DepthStencilView> depthStencilView;
+    // CD3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc(
+    //     D3D11_DSV_DIMENSION_TEXTURE2DARRAY, depthSwapchainFormat);
+    // CHECK_HRCMD(m_device->CreateDepthStencilView(
+    //     depthTexture, &depthStencilViewDesc, depthStencilView.put()));
 
-    const bool reversedZ =
-        viewProjections[0].NearFar.Near > viewProjections[0].NearFar.Far;
-    const float depthClearValue = reversedZ ? 0.f : 1.f;
+    // const bool reversedZ =
+    //     viewProjections[0].NearFar.Near > viewProjections[0].NearFar.Far;
+    // const float depthClearValue = reversedZ ? 0.f : 1.f;
 
     // Clear swapchain and depth buffer. NOTE: This will clear the entire render
     // target view, not just the specified view.
+    constexpr DirectX::XMVECTORF32 renderTargetClearColor = {
+        0.184313729f, 0.309803933f, 0.309803933f, 1.000000000f};
+
     m_deviceContext->ClearRenderTargetView(renderTargetView.get(),
                                            renderTargetClearColor);
-    m_deviceContext->ClearDepthStencilView(
-        depthStencilView.get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
-        depthClearValue, 0);
-    m_deviceContext->OMSetDepthStencilState(
-        reversedZ ? m_reversedZDepthNoStencilTest.get() : nullptr, 0);
+    // m_deviceContext->ClearDepthStencilView(
+    //     depthStencilView.get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
+    //     depthClearValue, 0);
+    // m_deviceContext->OMSetDepthStencilState(
+    //     reversedZ ? m_reversedZDepthNoStencilTest.get() : nullptr, 0);
 
     ID3D11RenderTargetView *renderTargets[] = {renderTargetView.get()};
     m_deviceContext->OMSetRenderTargets((UINT)std::size(renderTargets),
-                                        renderTargets, depthStencilView.get());
+                                        renderTargets,
+                                        // depthStencilView.get()
+                                        nullptr);
 
     ID3D11Buffer *const constantBuffers[] = {m_modelCBuffer.get(),
                                              m_viewProjectionCBuffer.get()};
@@ -256,14 +259,14 @@ struct CubeGraphics : sample::IGraphicsPluginD3D11 {
     m_deviceContext->PSSetShader(m_pixelShader.get(), nullptr, 0);
 
     CubeShader::ViewProjectionConstantBuffer viewProjectionCBufferData{};
-
     for (uint32_t k = 0; k < viewInstanceCount; k++) {
-      const DirectX::XMMATRIX spaceToView =
-          xr::math::LoadInvertedXrPose(viewProjections[k].Pose);
-      const DirectX::XMMATRIX projectionMatrix = ComposeProjectionMatrix(
-          viewProjections[k].Fov, viewProjections[k].NearFar);
+      const DirectX::XMMATRIX spaceToView = DirectX::XMLoadFloat4x4(
+          (DirectX::XMFLOAT4X4 *)(k == 0 ? view : rightView));
+      const DirectX::XMMATRIX projectionMatrix = DirectX::XMLoadFloat4x4(
+          (DirectX::XMFLOAT4X4 *)(k == 0 ? projection : rightProjection));
 
-      // Set view projection matrix for each view, transpose for shader usage.
+      // Set view projection matrix for each view, transpose for shader
+      // usage.
       DirectX::XMStoreFloat4x4(
           &viewProjectionCBufferData.ViewProjection[k],
           DirectX::XMMatrixTranspose(spaceToView * projectionMatrix));

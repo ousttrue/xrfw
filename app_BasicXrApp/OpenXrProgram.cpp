@@ -841,14 +841,14 @@ namespace {
             const DirectX::XMVECTORF32 renderTargetClearColor =
                 (m_environmentBlendMode == XR_ENVIRONMENT_BLEND_MODE_OPAQUE) ? opaqueColor : transparent;
 
-            m_graphicsPlugin->RenderView(imageRect,
-                                         renderTargetClearColor,
-                                         viewProjections,
-                                         colorSwapchain.Format,
-                                         colorSwapchain.Images[colorSwapchainImageIndex].texture,
-                                         depthSwapchain.Format,
-                                         depthSwapchain.Images[depthSwapchainImageIndex].texture,
-                                         visibleCubes);
+            // m_graphicsPlugin->RenderView(imageRect,
+            //                              renderTargetClearColor,
+            //                              viewProjections,
+            //                              colorSwapchain.Format,
+            //                              colorSwapchain.Images[colorSwapchainImageIndex].texture,
+            //                              depthSwapchain.Format,
+            //                              depthSwapchain.Images[depthSwapchainImageIndex].texture,
+            //                              visibleCubes);
 
             XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
             CHECK_XRCMD(xrReleaseSwapchainImage(colorSwapchain.Handle.Get(), &releaseInfo));

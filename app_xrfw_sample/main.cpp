@@ -6,15 +6,15 @@ template <typename T> int run(T &platform) {
   OglRenderer renderer;
   auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
                        const XrSwapchainImageBaseHeader *rightSwapchainImage,
-                       int width, int height, const float projection[16],
+                       const XrfwSwapchains &info, const float projection[16],
                        const float view[16], const float rightProjection[16],
                        const float rightView[16], void *user) {
     auto pRenderer = ((OglRenderer *)user);
-    pRenderer->Render(xrfwCastTextureWin32OpenGL(swapchainImage), width, height,
-                      projection, view);
+    pRenderer->Render(xrfwCastTextureWin32OpenGL(swapchainImage), info.width,
+                      info.height, projection, view);
     if (rightProjection) {
-      pRenderer->Render(xrfwCastTextureWin32OpenGL(rightSwapchainImage), width,
-                        height, rightProjection, rightView);
+      pRenderer->Render(xrfwCastTextureWin32OpenGL(rightSwapchainImage),
+                        info.width, info.height, rightProjection, rightView);
     }
   };
   return xrfwSession(platform, renderFunc, &renderer);
