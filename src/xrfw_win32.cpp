@@ -126,6 +126,9 @@ XRFW_API XrSession xrfwCreateSessionWin32OpenGL(XrfwSwapchains *swapchains,
 
 XRFW_API uint32_t
 xrfwCastTextureWin32OpenGL(const XrSwapchainImageBaseHeader *swapchainImage) {
+  if (!swapchainImage) {
+    return {};
+  }
   return reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
       ->image;
 }
@@ -187,6 +190,9 @@ XRFW_API XrSession xrfwCreateSessionWin32D3D11(XrfwSwapchains *swapchains,
 
 ID3D11Texture2D *
 xrfwCastTextureD3D11(const XrSwapchainImageBaseHeader *swapchainImage) {
+  if (!swapchainImage) {
+    return {};
+  }
   return reinterpret_cast<const XrSwapchainImageD3D11KHR *>(swapchainImage)
       ->texture;
 }
