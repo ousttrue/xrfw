@@ -198,7 +198,7 @@ private:
 FBO g_fbo;
 
 void render_gles_scene(uint32_t colorTexture, int width, int height,
-                      const float projection[16], const float view[16], void *) {
+                      const float projection[16], const float view[16]) {
   int view_x = 0;
   int view_y = 0;
   int view_w = width;

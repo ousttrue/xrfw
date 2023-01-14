@@ -4,6 +4,7 @@
 #include <plog/Log.h>
 
 #include "xr_linear.h"
+#include "xrfw_initialization.h"
 #include <algorithm>
 #include <list>
 #include <openxr/openxr.h>
@@ -11,6 +12,8 @@
 #include <unordered_map>
 #include <vector>
 #include <xrfw.h>
+
+XrfwInitialization g_init = {};
 
 static const int MAX_NUM_LAYERS = 16;
 // App only supports the primary stereo view config.
@@ -39,7 +42,7 @@ XrFrameState g_frameState{XR_TYPE_FRAME_STATE};
 XrCompositionLayerProjectionView g_projectionLayerViews[2] = {};
 XrCompositionLayerProjection g_projection = {};
 
-std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session) {
+static std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session) {
   // Select a swapchain format.
   uint32_t swapchainFormatCount;
   auto result =
@@ -64,8 +67,7 @@ std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session) {
 
 XRFW_API XrInstance xrfwGetInstance() { return g_instance; }
 
-XRFW_API XrInstance xrfwCreateInstance(XrfwInitialization *init,
-                                       XrApplicationInfo *pAppInfo) {
+XRFW_API XrInstance xrfwCreateInstance(XrApplicationInfo *pAppInfo) {
   xrfwInitLogger();
 
   XrApplicationInfo appInfo{
@@ -81,13 +83,13 @@ XRFW_API XrInstance xrfwCreateInstance(XrfwInitialization *init,
 
   XrInstanceCreateInfo instanceCreateInfo{
       .type = XR_TYPE_INSTANCE_CREATE_INFO,
-      .next = init->next,
+      .next = g_init.next,
       .createFlags = 0,
       .applicationInfo = appInfo,
       .enabledApiLayerCount = 0,
       .enabledApiLayerNames = nullptr,
-      .enabledExtensionCount = init->extensionCount,
-      .enabledExtensionNames = init->extensionNames,
+      .enabledExtensionCount = g_init.extensionCount,
+      .enabledExtensionNames = g_init.extensionNames,
   };
 
   auto result = xrCreateInstance(&instanceCreateInfo, &g_instance);
@@ -153,8 +155,8 @@ XRFW_API XrInstance xrfwCreateInstance(XrfwInitialization *init,
     return nullptr;
   }
 
-  if (!init->graphicsRequirementsCallback(g_instance, g_systemId,
-                                          init->graphicsRequirements)) {
+  if (!g_init.graphicsRequirementsCallback(g_instance, g_systemId,
+                                           g_init.graphicsRequirements)) {
     return nullptr;
   }
 
@@ -338,7 +340,8 @@ XRFW_API XrSwapchain
 xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
                     int *width, int *height) {
   auto swapchainFormats = _xrfwGetSwapchainFormats(g_session);
-  auto colorSwapchainFormat = _xrfwSelectColorSwapchainFormat(swapchainFormats);
+  auto colorSwapchainFormat =
+      g_init.selectColorSwapchainFormatCallback(swapchainFormats);
 
   PLOG_INFO << "Creating swapchain for view "
             << "with dimensions Width="
@@ -378,8 +381,8 @@ xrfwCreateSwapchain(const XrViewConfigurationView &viewConfigurationView,
   }
 
   // XXX This should really just return XrSwapchainImageBaseHeader*
-  auto swapchainImages =
-      _xrfwAllocateSwapchainImageStructs(imageCount, swapchainCreateInfo);
+  auto swapchainImages = g_init.allocateSwapchainImageStructsCallback(
+      imageCount, swapchainCreateInfo);
   result = xrEnumerateSwapchainImages(swapchain, imageCount, &imageCount,
                                       swapchainImages[0]);
   if (XR_FAILED(result)) {

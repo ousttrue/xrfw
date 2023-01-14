@@ -1,7 +1,8 @@
+#include "pch.h"
+
 #include <plog/Log.h>
 #include <xrfw.h>
 
-#include "pch.h"
 #include "OpenXrProgram.h"
 
 int main(int argc, char **argv) {
@@ -16,8 +17,15 @@ int main(int argc, char **argv) {
   }
 
   auto graphics = sample::CreateCubeGraphics();
-  // return xrfwSession(platform, &render_gles_scene, nullptr);
+  auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
+                       int width, int height, const float projection[16],
+                       const float view[16], void *user) {
+    ((sample::IGraphicsPluginD3D11 *)user)
+        ->Render(xrfwCastTextureD3D11(swapchainImage), width, height,
+                 projection, view);
+  };
+  auto ret = xrfwSession(platform, renderFunc, graphics.get());
 
   xrfwDestroyInstance();
-  return 0;
+  return ret;
 }

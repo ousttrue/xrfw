@@ -1,7 +1,11 @@
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw.h"
+#include "xrfw_initialization.h"
 #include "xrfw_plog_formatter.h"
 
+#ifdef XR_USE_GRAPHICS_API_D3D11
+#include <d3d11.h>
+#endif
 #include <openxr/openxr_platform.h>
 
 #include <plog/Appenders/ColorConsoleAppender.h>
@@ -17,6 +21,8 @@ XRFW_API void xrfwInitLogger() {
   static plog::ColorConsoleAppender<plog::MyFormatter> consoleAppender;
   plog::init(plog::debug, &consoleAppender);
 }
+
+extern XrfwInitialization g_init;
 
 #ifdef XR_USE_GRAPHICS_API_OPENGL
 static const char *opengl_extensions[1] = {
@@ -48,13 +54,9 @@ static bool graphicsRequirementsWin32OpenGL(XrInstance instance,
 
   return true;
 }
-XRFW_API void xrfwInitExtensionsWin32OpenGL(XrfwInitialization *init) {
-  init->extensionNames = opengl_extensions;
-  init->extensionCount = _countof(opengl_extensions);
-  init->graphicsRequirementsCallback = &graphicsRequirementsWin32OpenGL;
-}
 
-int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats) {
+static int64_t
+selectColorSwapchainFormatWin32OpenGL(std::span<int64_t> swapchainFormats) {
 
   // List of supported color swapchain formats.
   constexpr int64_t SupportedColorSwapchainFormats[] = {
@@ -78,8 +80,9 @@ int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats) {
   return *swapchainFormatIt;
 }
 
-std::list<std::vector<XrSwapchainImageOpenGLKHR>> g_swapchainImageBuffers;
-std::vector<XrSwapchainImageBaseHeader *> _xrfwAllocateSwapchainImageStructs(
+static std::list<std::vector<XrSwapchainImageOpenGLKHR>>
+    g_swapchainImageBuffers;
+static std::vector<XrSwapchainImageBaseHeader *> allocateSwapchainImageStructs(
     uint32_t capacity, const XrSwapchainCreateInfo & /*swapchainCreateInfo*/) {
   // Allocate and initialize the buffer of image structs (must be sequential in
   // memory for xrEnumerateSwapchainImages). Return back an array of pointers to
@@ -99,6 +102,17 @@ std::vector<XrSwapchainImageBaseHeader *> _xrfwAllocateSwapchainImageStructs(
   return swapchainImageBase;
 }
 
+XRFW_API void xrfwInitExtensionsWin32OpenGL(
+    XrGraphicsRequirementsOpenGLKHR *graphicsRequirements) {
+  g_init.extensionNames = opengl_extensions;
+  g_init.extensionCount = _countof(opengl_extensions);
+  g_init.graphicsRequirements = graphicsRequirements;
+  g_init.graphicsRequirementsCallback = &graphicsRequirementsWin32OpenGL;
+  g_init.selectColorSwapchainFormatCallback =
+      &selectColorSwapchainFormatWin32OpenGL;
+  g_init.allocateSwapchainImageStructsCallback = &allocateSwapchainImageStructs;
+}
+
 XRFW_API XrSession xrfwCreateSessionWin32OpenGL(XrfwSwapchains *swapchains,
                                                 HDC dc, HGLRC glrc) {
   XrGraphicsBindingOpenGLWin32KHR graphicsBinding = {
@@ -109,6 +123,13 @@ XRFW_API XrSession xrfwCreateSessionWin32OpenGL(XrfwSwapchains *swapchains,
   };
   return xrfwCreateSession(swapchains, &graphicsBinding);
 }
+
+XRFW_API uint32_t
+xrfwCastTextureWin32OpenGL(const XrSwapchainImageBaseHeader *swapchainImage) {
+  return reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
+      ->image;
+}
+
 #endif
 
 #ifdef XR_USE_GRAPHICS_API_D3D11
@@ -141,10 +162,17 @@ static bool graphicsRequirementsWin32D3D11(XrInstance instance,
 
   return true;
 }
-XRFW_API void xrfwInitExtensionsWin32D3D11(XrfwInitialization *init) {
-  init->extensionNames = d3d11_extensions;
-  init->extensionCount = _countof(d3d11_extensions);
-  init->graphicsRequirementsCallback = &graphicsRequirementsWin32D3D11;
+
+XRFW_API void xrfwInitExtensionsWin32D3D11(
+    XrGraphicsRequirementsD3D11KHR *graphicsRequirements) {
+  g_init.extensionNames = d3d11_extensions;
+  g_init.extensionCount = _countof(d3d11_extensions);
+  g_init.graphicsRequirements = graphicsRequirements;
+  g_init.graphicsRequirementsCallback = &graphicsRequirementsWin32D3D11;
+  // g_init.selectColorSwapchainFormatCallback =
+  //     &selectColorSwapchainFormatWin32OpenGL;
+  // g_init.allocateSwapchainImageStructsCallback =
+  // &allocateSwapchainImageStructs;
 }
 
 XRFW_API XrSession xrfwCreateSessionWin32D3D11(XrfwSwapchains *swapchains,
@@ -156,5 +184,12 @@ XRFW_API XrSession xrfwCreateSessionWin32D3D11(XrfwSwapchains *swapchains,
   };
   return xrfwCreateSession(swapchains, &graphicsBinding);
 }
+
+ID3D11Texture2D *
+xrfwCastTextureD3D11(const XrSwapchainImageBaseHeader *swapchainImage) {
+  return reinterpret_cast<const XrSwapchainImageD3D11KHR *>(swapchainImage)
+      ->texture;
+}
+
 #endif
 #endif

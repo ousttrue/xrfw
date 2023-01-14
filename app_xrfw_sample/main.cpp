@@ -2,14 +2,14 @@
 #include <xrfw.h>
 
 #include "oglrenderer.h"
-template<typename T>
-int run(T &platform) {
+template <typename T> int run(T &platform) {
   OglRenderer renderer;
-  auto renderFunc = [](uint32_t colorTexture, int width, int height,
-                       const float projection[16], const float view[16],
-                       void *user) {
+  auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
+                       int width, int height, const float projection[16],
+                       const float view[16], void *user) {
     ((OglRenderer *)user)
-        ->Render(colorTexture, width, height, projection, view);
+        ->Render(xrfwCastTextureWin32OpenGL(swapchainImage), width, height,
+                 projection, view);
   };
   return xrfwSession(platform, renderFunc, &renderer);
 }

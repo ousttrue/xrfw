@@ -2,10 +2,15 @@
 #include <xrfw.h>
 
 #include "render_scene.h"
-template<typename T>
-int run(T &platform) {
+template <typename T> int run(T &platform) {
   init_gles_scene();
-  return xrfwSession(platform, &render_gles_scene, nullptr);
+  auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
+                       int width, int height, const float projection[16],
+                       const float view[16], void *user) {
+    render_gles_scene(xrfwCastTextureWin32OpenGL(swapchainImage), width, height,
+                      projection, view);
+  };
+  return xrfwSession(platform, renderFunc, nullptr);
 }
 
 #ifdef XR_USE_PLATFORM_WIN32

@@ -16,23 +16,6 @@ struct XrfwSwapchains {
   int rightHeight;
 };
 
-std::vector<int64_t> _xrfwGetSwapchainFormats(XrSession session);
-int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats);
-std::vector<XrSwapchainImageBaseHeader *>
-_xrfwAllocateSwapchainImageStructs(uint32_t capacity,
-                                   const XrSwapchainCreateInfo &);
-
-using GraphicsRequirementsFunc = bool (*)(XrInstance instance,
-                                          XrSystemId systemId,
-                                          void *outGraphicsRequirements);
-struct XrfwInitialization {
-  const char *const *extensionNames = nullptr;
-  uint32_t extensionCount = 0;
-  GraphicsRequirementsFunc graphicsRequirementsCallback = nullptr;
-  void *graphicsRequirements = nullptr;
-  const void *next = nullptr;
-};
-
 #ifdef XR_USE_PLATFORM_WIN32
 #ifdef XRFW_BUILD
 #define XRFW_API extern "C" __declspec(dllexport)
@@ -44,8 +27,7 @@ struct XrfwInitialization {
 #endif
 
 XRFW_API void xrfwInitLogger();
-XRFW_API XrInstance xrfwCreateInstance(XrfwInitialization *init,
-                                       XrApplicationInfo *appInfo = nullptr);
+XRFW_API XrInstance xrfwCreateInstance(XrApplicationInfo *appInfo = nullptr);
 XRFW_API void xrfwDestroyInstance();
 XRFW_API XrInstance xrfwGetInstance();
 
@@ -74,9 +56,9 @@ struct XrfwViewMatrices {
 XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrfwViewMatrices *viewMatrix);
 XRFW_API XrBool32 xrfwEndFrame();
 
-using RenderFunc = void (*)(uint32_t colorTexture, int width, int height,
-                            const float projection[16], const float view[16],
-                            void *user);
+using RenderFunc = void (*)(const XrSwapchainImageBaseHeader *swapchainImage,
+                            int width, int height, const float projection[16],
+                            const float view[16], void *user);
 
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw_win32.h"
@@ -89,7 +71,7 @@ using RenderFunc = void (*)(uint32_t colorTexture, int width, int height,
 //
 
 template <typename T>
-inline int xrfwSession(T &platform, RenderFunc render, void *user) {
+inline int xrfwSession(T &platform, const RenderFunc &render, void *user) {
   // session and swapchains from graphics
   XrfwSwapchains swapchains;
   auto session = platform.CreateSession(&swapchains);
@@ -107,15 +89,13 @@ inline int xrfwSession(T &platform, RenderFunc render, void *user) {
       if (xrfwBeginFrame(&frameTime, &viewMatrix)) {
         // left
         if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.left)) {
-          auto colorTexture = platform.CastTexture(swapchainImage);
-          render(colorTexture, swapchains.leftWidth, swapchains.leftHeight,
+          render(swapchainImage, swapchains.leftWidth, swapchains.leftHeight,
                  viewMatrix.leftProjection, viewMatrix.leftView, user);
           xrfwReleaseSwapchain(swapchains.left);
         }
         // right
         if (auto swapchainImage = xrfwAcquireSwapchain(swapchains.right)) {
-          auto colorTexture = platform.CastTexture(swapchainImage);
-          render(colorTexture, swapchains.rightWidth, swapchains.rightHeight,
+          render(swapchainImage, swapchains.rightWidth, swapchains.rightHeight,
                  viewMatrix.rightProjection, viewMatrix.rightView, user);
           xrfwReleaseSwapchain(swapchains.right);
         }
@@ -133,7 +113,7 @@ inline int xrfwSession(T &platform, RenderFunc render, void *user) {
   return 0;
 }
 
-//
+// ostream
 #include <iosfwd>
 inline std::ostream &operator<<(std::ostream &os, XrResult value) {
   char buffer[XR_MAX_RESULT_STRING_SIZE];

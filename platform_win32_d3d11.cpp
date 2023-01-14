@@ -83,17 +83,17 @@ struct PlatformWin32D3D11Impl {
     return true;
   }
 
-  XrSession CreateSession(XrfwSwapchains *swapchains) { return {}; }
+  XrSession CreateSession(XrfwSwapchains *swapchains) {
+    return xrfwCreateSessionWin32D3D11(swapchains, m_device.get());
+  }
 };
 
 XrfwPlatformWin32D3D11::XrfwPlatformWin32D3D11(struct android_app *)
     : impl_(new PlatformWin32D3D11Impl) {}
 XrfwPlatformWin32D3D11::~XrfwPlatformWin32D3D11() { delete impl_; }
 XrInstance XrfwPlatformWin32D3D11::CreateInstance() {
-  XrfwInitialization init;
-  init.graphicsRequirements = &impl_->graphicsRequirements_;
-  xrfwInitExtensionsWin32D3D11(&init);
-  return xrfwCreateInstance(&init);
+  xrfwInitExtensionsWin32D3D11(&impl_->graphicsRequirements_);
+  return xrfwCreateInstance();
 }
 bool XrfwPlatformWin32D3D11::InitializeGraphics() {
   return impl_->InitializeGraphics();
@@ -103,10 +103,6 @@ XrSession XrfwPlatformWin32D3D11::CreateSession(XrfwSwapchains *swapchains) {
 }
 bool XrfwPlatformWin32D3D11::BeginFrame() { return {}; }
 void XrfwPlatformWin32D3D11::EndFrame(RenderFunc render, void *user) {}
-uint32_t XrfwPlatformWin32D3D11::CastTexture(
-    const XrSwapchainImageBaseHeader *swapchainImage) {
-  return {};
-}
 void XrfwPlatformWin32D3D11::Sleep(std::chrono::milliseconds ms) { {}; }
 #endif
 #endif
