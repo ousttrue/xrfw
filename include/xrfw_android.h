@@ -7,8 +7,25 @@
 #include <android/sensor.h>
 
 XRFW_API XrBool32 xrfwInitializeLoaderAndroid(struct android_app *state);
+
+#if XR_USE_GRAPHICS_API_OPENGL_ES
 XRFW_API void xrfwPlatformAndroidOpenGLES(XrfwInitialization *init,
                                           struct android_app *state);
 XRFW_API XrSession xrfwCreateSessionAndroidOpenGLES(XrfwSwapchains *swapchains,
                                                     EGLDisplay display,
                                                     EGLContext context);
+
+struct XrfwPlatformAndroidOpenGLES {
+  struct PlatformImpl *impl_ = nullptr;
+  XrfwPlatformAndroidOpenGLES(struct android_app *state = nullptr);
+  ~XrfwPlatformAndroidOpenGLES();
+  bool InitializeLoader();
+  XrInstance CreateInstance();
+  bool InitializeGraphics();
+  XrSession CreateSession(struct XrfwSwapchains *swapchains);
+  bool BeginFrame();
+  void EndFrame(RenderFunc render, void *user);
+  uint32_t CastTexture(const XrSwapchainImageBaseHeader *swapchainImage);
+  void Sleep(std::chrono::milliseconds ms);
+};
+#endif

@@ -70,6 +70,10 @@ struct XrfwViewMatrices {
 XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrfwViewMatrices *viewMatrix);
 XRFW_API XrBool32 xrfwEndFrame();
 
+using RenderFunc = void (*)(uint32_t colorTexture, int width, int height,
+                            const float projection[16], const float view[16],
+                            void *user);
+
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw_win32.h"
 #elif XR_USE_PLATFORM_ANDROID
@@ -79,25 +83,9 @@ XRFW_API XrBool32 xrfwEndFrame();
 #endif
 
 //
-using RenderFunc = void (*)(uint32_t colorTexture, int width, int height,
-                            const float projection[16], const float view[16],
-                            void *user);
 
-struct XrfwPlatform {
-  struct PlatformImpl *impl_ = nullptr;
-  XrfwPlatform(struct android_app *state = nullptr);
-  ~XrfwPlatform();
-  bool InitializeLoader();
-  XrInstance CreateInstance();
-  bool InitializeGraphics();
-  XrSession CreateSession(struct XrfwSwapchains *swapchains);
-  bool BeginFrame();
-  void EndFrame(RenderFunc render, void *user);
-  uint32_t CastTexture(const XrSwapchainImageBaseHeader *swapchainImage);
-  void Sleep(std::chrono::milliseconds ms);
-};
-
-inline int xrfwSession(XrfwPlatform &platform, RenderFunc render, void *user) {
+template<typename T>
+inline int xrfwSession(T &platform, RenderFunc render, void *user) {
   // session and swapchains from graphics
   XrfwSwapchains swapchains;
   auto session = platform.CreateSession(&swapchains);

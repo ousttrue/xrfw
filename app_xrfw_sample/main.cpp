@@ -2,7 +2,8 @@
 #include <xrfw.h>
 
 #include "oglrenderer.h"
-int run(XrfwPlatform &platform) {
+template<typename T>
+int run(T &platform) {
   OglRenderer renderer;
   auto renderFunc = [](uint32_t colorTexture, int width, int height,
                        const float projection[16], const float view[16],
@@ -15,7 +16,7 @@ int run(XrfwPlatform &platform) {
 
 #ifdef XR_USE_PLATFORM_WIN32
 int main(int argc, char **argv) {
-  XrfwPlatform platform;
+  XrfwPlatformWin32OpenGL platform;
   auto instance = platform.CreateInstance();
   if (!instance) {
     return 1;

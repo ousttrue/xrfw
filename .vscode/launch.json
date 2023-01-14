@@ -26,5 +26,16 @@
             "environment": [],
             "console": "integratedTerminal"
         },
+        {
+            "name": "BasicXrApp",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/prefix/bin/BasicXrApp.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal"
+        },
     ]
 }

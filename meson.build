@@ -15,8 +15,9 @@ if compiler.get_id() == 'msvc'
 endif
 if host_machine.system() == 'windows'
     cpp_args += [
-        '-DXR_USE_PLATFORM_WIN32=1', 
-        '-DXR_USE_GRAPHICS_API_OPENGL=1',
+        '-DXR_USE_PLATFORM_WIN32', 
+        '-DXR_USE_GRAPHICS_API_OPENGL',
+        '-DXR_USE_GRAPHICS_API_D3D11',
         '-DPLOG_EXPORT',
     ]
 else

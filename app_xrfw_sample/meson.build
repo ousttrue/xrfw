@@ -5,7 +5,7 @@ cpp_args = [
 ]
 executable('xrfw_sample', [
     'main.cpp',
-    '../platform_win32.cpp',
+    '../platform_win32_glfw_opengl.cpp',
     'oglrenderer.cpp',
     'ogldrawable.cpp',
 ],

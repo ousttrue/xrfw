@@ -7,7 +7,7 @@ cpp_args = [
 executable('gl2gridOXR', [
     'main.cpp',
     'render_scene.cpp',
-    '../platform_win32.cpp',    
+    '../platform_win32_glfw_opengl.cpp',    
 ],
     install: true,
     cpp_args: cpp_args,

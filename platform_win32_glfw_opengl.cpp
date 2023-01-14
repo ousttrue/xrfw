@@ -86,17 +86,17 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   camera->update();
 }
 
-struct PlatformImpl {
+struct PlatformWin32OpenGLImpl {
   GLFWwindow *window_ = nullptr;
   TurnTable camera;
 
-  PlatformImpl() {
+  PlatformWin32OpenGLImpl() {
     if (!glfwInit()) {
       PLOG_FATAL << "glfwInit";
       throw std::runtime_error("glfwInit");
     }
   }
-  ~PlatformImpl() { glfwTerminate(); }
+  ~PlatformWin32OpenGLImpl() { glfwTerminate(); }
 
   bool InitializeGraphics() {
     // Create a windowed mode window and its OpenGL context
@@ -143,27 +143,27 @@ struct PlatformImpl {
   }
 };
 
-XrfwPlatform::XrfwPlatform(struct android_app *) : impl_(new PlatformImpl) {}
-XrfwPlatform::~XrfwPlatform() { delete impl_; }
-XrInstance XrfwPlatform::CreateInstance() {
+XrfwPlatformWin32OpenGL::XrfwPlatformWin32OpenGL(struct android_app *) : impl_(new PlatformWin32OpenGLImpl) {}
+XrfwPlatformWin32OpenGL::~XrfwPlatformWin32OpenGL() { delete impl_; }
+XrInstance XrfwPlatformWin32OpenGL::CreateInstance() {
   XrfwInitialization init;
   xrfwPlatformWin32OpenGL(&init);
   return xrfwCreateInstance(&init);
 }
-bool XrfwPlatform::InitializeGraphics() { return impl_->InitializeGraphics(); }
-XrSession XrfwPlatform::CreateSession(XrfwSwapchains *swapchains) {
+bool XrfwPlatformWin32OpenGL::InitializeGraphics() { return impl_->InitializeGraphics(); }
+XrSession XrfwPlatformWin32OpenGL::CreateSession(XrfwSwapchains *swapchains) {
   return impl_->CreateSession(swapchains);
 }
-bool XrfwPlatform::BeginFrame() { return impl_->BeginFrame(); }
-void XrfwPlatform::EndFrame(RenderFunc render, void *user) {
+bool XrfwPlatformWin32OpenGL::BeginFrame() { return impl_->BeginFrame(); }
+void XrfwPlatformWin32OpenGL::EndFrame(RenderFunc render, void *user) {
   impl_->EndFrame(render, user);
 }
 uint32_t
-XrfwPlatform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
+XrfwPlatformWin32OpenGL::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
   return reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
       ->image;
 }
-void XrfwPlatform::Sleep(std::chrono::milliseconds ms) {
+void XrfwPlatformWin32OpenGL::Sleep(std::chrono::milliseconds ms) {
   ::Sleep((uint32_t)ms.count());
 }
 #endif

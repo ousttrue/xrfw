@@ -2,14 +2,15 @@
 #include <xrfw.h>
 
 #include "render_scene.h"
-int run(XrfwPlatform &platform) {
+template<typename T>
+int run(T &platform) {
   init_gles_scene();
   return xrfwSession(platform, &render_gles_scene, nullptr);
 }
 
 #ifdef XR_USE_PLATFORM_WIN32
 int main(int argc, char **argv) {
-  XrfwPlatform platform;
+  XrfwPlatformWin32OpenGL platform;
   auto instance = platform.CreateInstance();
   if (!instance) {
     return 1;
