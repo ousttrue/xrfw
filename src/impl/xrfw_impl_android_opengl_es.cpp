@@ -1,4 +1,5 @@
 #ifdef XR_USE_PLATFORM_ANDROID
+#include <xrfw_impl_android_opengl_es.h>
 #include <android_native_app_glue.h>
 #include <xrfw.h>
 

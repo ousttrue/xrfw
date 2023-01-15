@@ -1,6 +1,5 @@
 #include <plog/Log.h>
 #include <xrfw.h>
-#include <xrfw_impl_win32_opengl.h>
 
 #include "oglrenderer.h"
 template <typename T> int run(T &platform) {
@@ -30,6 +29,7 @@ template <typename T> int run(T &platform) {
 }
 
 #ifdef XR_USE_PLATFORM_WIN32
+#include <xrfw_impl_win32_opengl.h>
 int main(int argc, char **argv) {
   XrfwPlatformWin32OpenGL platform;
   auto instance = platform.CreateInstance();
@@ -47,7 +47,8 @@ int main(int argc, char **argv) {
   return ret;
 }
 #elif XR_USE_PLATFORM_ANDROID
-#include <android_native_app_glue.h>
+#include <xrfw_impl_android_opengl_es.h>
+// #include <android_native_app_glue.h>
 void android_main(struct android_app *state) {
   XrfwPlatformAndroidOpenGLES platform(state);
   auto instance = platform.CreateInstance();
