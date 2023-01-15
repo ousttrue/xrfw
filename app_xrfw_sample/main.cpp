@@ -1,28 +1,44 @@
+#include <array>
 #include <plog/Log.h>
 #include <xrfw.h>
+#include <xrfw_swapchain_fbo.h>
 
-#include "oglrenderer.h"
+#include "ogldrawable.h"
 template <typename T> int run(T &platform) {
-  struct Context
-  {
+
+  struct Context {
+    std::array<float, 4> clearColor = {0, 0, 0, 0};
     T &platform;
-    OglRenderer renderer;
+    std::shared_ptr<OglDrawable> drawable;
+    XrfwSwapchainFbo fbo = {};
+    std::vector<Cube> cubes;
   };
-  Context context
-  {
-    .platform=platform,
+  Context context{
+      .platform = platform,
+      .drawable = OglDrawable::Create(),
   };
+  // For each locatable space that we want to visualize, render a 25cm
+  context.cubes.push_back(Cube{
+      {0, 0, 0, 1},
+      {0, 0, 0},
+      {0.25f, 0.25f, 0.25f},
+  });
+
   auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
                        const XrSwapchainImageBaseHeader *rightSwapchainImage,
                        const XrfwSwapchains &info, const float projection[16],
                        const float view[16], const float rightProjection[16],
                        const float rightView[16], void *user) {
     auto pContext = ((Context *)user);
-    pContext->renderer.Render(pContext->platform.CastTexture(swapchainImage), info.width,
-                      info.height, projection, view);
+    pContext->fbo.Begin(pContext->platform.CastTexture(swapchainImage),
+                        info.width, info.height, &pContext->clearColor[0]);
+    pContext->drawable->Render(projection, view, pContext->cubes);
+    pContext->fbo.End();
     if (rightProjection) {
-      pContext->renderer.Render(pContext->platform.CastTexture(rightSwapchainImage),
-                        info.width, info.height, rightProjection, rightView);
+      pContext->fbo.Begin(pContext->platform.CastTexture(rightSwapchainImage),
+                          info.width, info.height, &pContext->clearColor[0]);
+      pContext->drawable->Render(rightProjection, rightView, pContext->cubes);
+      pContext->fbo.End();
     }
   };
   return xrfwSession(platform, renderFunc, &context);

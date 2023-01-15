@@ -141,6 +141,9 @@ void OglDrawable::Render(const float projection[16], const float view[16],
 }
 
 std::shared_ptr<OglDrawable> OglDrawable::Create() {
+#if XR_USE_PLATFORM_WIN32
+    glewInit();
+#endif
   auto ptr = std::shared_ptr<OglDrawable>(new OglDrawable);
   if (!ptr->Load()) {
     return nullptr;

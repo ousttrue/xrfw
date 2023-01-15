@@ -1,6 +1,6 @@
 #ifdef XR_USE_PLATFORM_WIN32
-#include <xrfw_impl_win32_opengl.h>
 #include <windows.h>
+#include <xrfw_impl_win32_opengl.h>
 
 #include <openxr/openxr_platform.h>
 
@@ -170,6 +170,9 @@ void XrfwPlatformWin32OpenGL::EndFrame(RenderFunc render, void *user) {
 }
 uint32_t XrfwPlatformWin32OpenGL::CastTexture(
     const XrSwapchainImageBaseHeader *swapchainImage) {
+  if (!swapchainImage) {
+    return {};
+  }
   return reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
       ->image;
 }
