@@ -152,6 +152,11 @@ struct PlatformImpl {
   struct android_app *app_ = nullptr;
   bool requestRestart = false;
   bool exitRenderLoop = false;
+
+  XrGraphicsRequirementsOpenGLESKHR graphicsRequirements_ = {
+      .type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR,
+  };
+
   // EGL
   EGLint majorVersion_;
   EGLint minorVersion_;
@@ -174,9 +179,8 @@ struct PlatformImpl {
       return {};
     }
 
-    XrfwInitialization init;
-    xrfwPlatformAndroidOpenGLES(&init, app_);
-    return xrfwCreateInstance(&init);
+    xrfwInitExtensionsAndroidOpenGLES(&graphicsRequirements_, app_);
+    return xrfwCreateInstance();
   }
 
   bool InitializeLoader() { return xrfwInitializeLoaderAndroid(app_); }
@@ -372,21 +376,27 @@ struct PlatformImpl {
   }
 };
 
-XrfwPlatform::XrfwPlatform(struct android_app *state)
+XrfwPlatformAndroidOpenGLES::XrfwPlatformAndroidOpenGLES(
+    struct android_app *state)
     : impl_(new PlatformImpl(state)) {}
-XrfwPlatform::~XrfwPlatform() { delete impl_; }
-XrInstance XrfwPlatform::CreateInstance() { return impl_->CreateInstance(); }
-bool XrfwPlatform::InitializeGraphics() { return impl_->InitializeGraphics(); }
-XrSession XrfwPlatform::CreateSession(XrfwSwapchains *swapchains) {
+XrfwPlatformAndroidOpenGLES::~XrfwPlatformAndroidOpenGLES() { delete impl_; }
+XrInstance XrfwPlatformAndroidOpenGLES::CreateInstance() {
+  return impl_->CreateInstance();
+}
+bool XrfwPlatformAndroidOpenGLES::InitializeGraphics() {
+  return impl_->InitializeGraphics();
+}
+XrSession
+XrfwPlatformAndroidOpenGLES::CreateSession(XrfwSwapchains *swapchains) {
   return impl_->CreateSession(swapchains);
 }
-bool XrfwPlatform::BeginFrame() { return impl_->BeginFrame(); }
+bool XrfwPlatformAndroidOpenGLES::BeginFrame() { return impl_->BeginFrame(); }
 
-void XrfwPlatform::EndFrame(RenderFunc render, void *user) {}
-uint32_t
-XrfwPlatform::CastTexture(const XrSwapchainImageBaseHeader *swapchainImage) {
+void XrfwPlatformAndroidOpenGLES::EndFrame(RenderFunc render, void *user) {}
+uint32_t XrfwPlatformAndroidOpenGLES::CastTexture(
+    const XrSwapchainImageBaseHeader *swapchainImage) {
   return reinterpret_cast<const XrSwapchainImageOpenGLESKHR *>(swapchainImage)
       ->image;
 }
-void XrfwPlatform::Sleep(std::chrono::milliseconds ms) {}
+void XrfwPlatformAndroidOpenGLES::Sleep(std::chrono::milliseconds ms) {}
 #endif

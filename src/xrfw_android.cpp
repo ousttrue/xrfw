@@ -1,8 +1,11 @@
 #ifdef XR_USE_PLATFORM_ANDROID
-#include "xrfw.h"
 #include <android/log.h>
 #include <android/sensor.h>
 #include <android_native_app_glue.h>
+
+#include "xrfw.h"
+#include "xrfw_initialization.h"
+#include "xrfw_swapchain_imagelist.h"
 
 #include <openxr/openxr_platform.h>
 
@@ -46,26 +49,24 @@ XRFW_API void xrfwInitLogger() {
   plog::init(plog::verbose, &androidAppender);
 }
 
-static const char *extensions[2] = {
+using SwapchainImageListOpenGLES =
+    SwapchainImageList<XrSwapchainImageOpenGLESKHR,
+                       XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR>;
+template <>
+std::list<std::vector<XrSwapchainImageOpenGLESKHR>>
+    SwapchainImageListOpenGLES::s_swapchainImageBuffers = {};
+
+static const char *const extensions[2] = {
     XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME,
     XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
 };
 XrInstanceCreateInfoAndroidKHR g_instanceCreateInfoAndroid = {};
 
-XRFW_API void xrfwPlatformAndroidOpenGLES(XrfwInitialization *init,
-                                          android_app *state) {
-  g_instanceCreateInfoAndroid = {
-      .type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
-      .applicationVM = state->activity->vm,
-      .applicationActivity = state->activity->clazz,
-  };
+extern XrfwInitialization g_init;
 
-  init->extensionNames = extensions;
-  init->extensionCount = sizeof(extensions) / sizeof(extensions[0]);
-  init->next = &g_instanceCreateInfoAndroid;
-}
-
-bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId) {
+static bool graphicsRequirementsOpenGLES(XrInstance instance,
+                                         XrSystemId systemId,
+                                         void *outGraphicsRequirements) {
 
   PFN_xrGetOpenGLESGraphicsRequirementsKHR
       pfnGetOpenGLESGraphicsRequirementsKHR = nullptr;
@@ -78,10 +79,11 @@ bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId) {
     return false;
   }
 
-  XrGraphicsRequirementsOpenGLESKHR graphicsRequirements{
-      XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR};
+  auto graphicsRequirements =
+      (XrGraphicsRequirementsOpenGLESKHR *)outGraphicsRequirements;
+  graphicsRequirements->type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR;
   result = pfnGetOpenGLESGraphicsRequirementsKHR(instance, systemId,
-                                                 &graphicsRequirements);
+                                                 graphicsRequirements);
   if (XR_FAILED(result)) {
     PLOG_FATAL << "xrGetOpenGLGraphicsRequirementsKHR";
     return false;
@@ -90,7 +92,8 @@ bool _xrfwGraphicsRequirements(XrInstance instance, XrSystemId systemId) {
   return true;
 }
 
-int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats) {
+static int64_t
+selectColorSwapchainFormatOpenGLES(std::span<int64_t> swapchainFormats) {
 
   // List of supported color swapchain formats.
   constexpr int64_t SupportedColorSwapchainFormats[] = {
@@ -107,25 +110,24 @@ int64_t _xrfwSelectColorSwapchainFormat(std::span<int64_t> swapchainFormats) {
   return *swapchainFormatIt;
 }
 
-std::list<std::vector<XrSwapchainImageOpenGLESKHR>> g_swapchainImageBuffers;
-std::vector<XrSwapchainImageBaseHeader *> _xrfwAllocateSwapchainImageStructs(
-    uint32_t capacity, const XrSwapchainCreateInfo & /*swapchainCreateInfo*/) {
-  // Allocate and initialize the buffer of image structs (must be sequential in
-  // memory for xrEnumerateSwapchainImages). Return back an array of pointers to
-  // each swapchain image struct so the consumer doesn't need to know the
-  // type/size.
-  std::vector<XrSwapchainImageOpenGLESKHR> swapchainImageBuffer(capacity);
-  std::vector<XrSwapchainImageBaseHeader *> swapchainImageBase;
-  for (XrSwapchainImageOpenGLESKHR &image : swapchainImageBuffer) {
-    image.type = XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR;
-    swapchainImageBase.push_back(
-        reinterpret_cast<XrSwapchainImageBaseHeader *>(&image));
-  }
+XRFW_API void xrfwInitExtensionsAndroidOpenGLES(
+    XrGraphicsRequirementsOpenGLESKHR *graphicsRequirements,
+    android_app *state) {
+  g_instanceCreateInfoAndroid = {
+      .type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
+      .applicationVM = state->activity->vm,
+      .applicationActivity = state->activity->clazz,
+  };
 
-  // Keep the buffer alive by moving it into the list of buffers.
-  g_swapchainImageBuffers.push_back(std::move(swapchainImageBuffer));
-
-  return swapchainImageBase;
+  g_init.extensionNames = extensions;
+  g_init.extensionCount = std::size(extensions);
+  g_init.next = &g_instanceCreateInfoAndroid;
+  g_init.graphicsRequirements = graphicsRequirements;
+  g_init.graphicsRequirementsCallback = &graphicsRequirementsOpenGLES;
+  g_init.selectColorSwapchainFormatCallback =
+      &selectColorSwapchainFormatOpenGLES;
+  g_init.allocateSwapchainImageStructsCallback =
+      &SwapchainImageListOpenGLES::allocateSwapchainImageStructs;
 }
 
 XRFW_API XrSession xrfwCreateSessionAndroidOpenGLES(XrfwSwapchains *swapchains,
@@ -136,6 +138,6 @@ XRFW_API XrSession xrfwCreateSessionAndroidOpenGLES(XrfwSwapchains *swapchains,
       .display = display,
       .context = context,
   };
-  return xrfwCreateSession(swapchains, &graphicsBinding);
+  return xrfwCreateSession(swapchains, &graphicsBinding, false);
 }
 #endif

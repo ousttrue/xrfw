@@ -63,7 +63,7 @@ target_compile_definitions(xrfw PUBLIC XR_USE_GRAPHICS_API_OPENGL_ES
 #
 # xrfw_sample
 #
-add_library(xrfw_sample SHARED main.cpp platform_android.cpp oglrenderer.cpp
+add_library(xrfw_sample SHARED main.cpp ../platform_android.cpp oglrenderer.cpp
                                ogldrawable.cpp)
 target_link_libraries(
   xrfw_sample
