@@ -3,6 +3,7 @@
 #define WINDOWS_LEAN_AND_MEAN
 #include <Windows.h>
 #include <d3d11.h>
+#include <winrt/base.h>
 
 #include <openxr/openxr_platform.h>
 
@@ -42,7 +43,7 @@ struct XrfwPlatformWin32D3D11 {
   ~XrfwPlatformWin32D3D11();
   bool InitializeLoader();
   XrInstance CreateInstance();
-  bool InitializeGraphics();
+  winrt::com_ptr<ID3D11Device> InitializeGraphics();
   XrSession CreateSession(struct XrfwSwapchains *swapchains);
   bool BeginFrame();
   void EndFrame(RenderFunc render, void *user);

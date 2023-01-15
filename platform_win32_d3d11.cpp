@@ -58,7 +58,7 @@ struct PlatformWin32D3D11Impl {
     }
   }
 
-  bool InitializeGraphics() {
+  winrt::com_ptr<ID3D11Device> InitializeGraphics() {
     // Create a list of feature levels which are both supported by the OpenXR
     // runtime and this application.
     std::vector<D3D_FEATURE_LEVEL> featureLevels = {
@@ -72,15 +72,14 @@ struct PlatformWin32D3D11Impl {
         featureLevels.end());
     if (featureLevels.size() == 0) {
       PLOG_FATAL << "Unsupported minimum feature level!";
-      return false;
+      return {};
     }
 
     const winrt::com_ptr<IDXGIAdapter1> adapter =
         sample::dx::GetAdapter(graphicsRequirements_.adapterLuid);
     CreateD3D11DeviceAndContext(adapter.get(), featureLevels, m_device.put(),
                                 m_deviceContext.put());
-
-    return true;
+    return m_device;
   }
 
   XrSession CreateSession(XrfwSwapchains *swapchains) {
@@ -95,7 +94,7 @@ XrInstance XrfwPlatformWin32D3D11::CreateInstance() {
   xrfwInitExtensionsWin32D3D11(&impl_->graphicsRequirements_);
   return xrfwCreateInstance();
 }
-bool XrfwPlatformWin32D3D11::InitializeGraphics() {
+winrt::com_ptr<ID3D11Device> XrfwPlatformWin32D3D11::InitializeGraphics() {
   return impl_->InitializeGraphics();
 }
 XrSession XrfwPlatformWin32D3D11::CreateSession(XrfwSwapchains *swapchains) {
