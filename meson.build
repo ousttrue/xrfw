@@ -82,7 +82,6 @@ if get_option('impl_d3d11')
     ]
     xrfw_impl_d3d11_lib = static_library('xrfw_impl_d3d11', [
         'src/impl/xrfw_impl_win32_d3d11.cpp',
-        'src/impl/DxUtility.cpp',
     ],
         cpp_args: xrfw_impl_d3d11_args,
         dependencies: xrfw_impl_d3d11_deps,
