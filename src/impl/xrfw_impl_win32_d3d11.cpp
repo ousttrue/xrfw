@@ -1,17 +1,45 @@
 #ifdef XR_USE_PLATFORM_WIN32
 #ifdef XR_USE_GRAPHICS_API_D3D11
-#include <d3d11.h>
-
-#include <openxr/openxr_platform.h>
-#include <plog/Log.h>
-#include <xrfw.h>
-
+#include <Windows.h>
 #include <algorithm>
+#include <dxgi.h>
+#include <plog/Log.h>
+#include <string_view>
 #include <vector>
-
 #include <winrt/base.h> // winrt::com_ptr
+#include <xrfw.h>
+#include <xrfw_impl_win32_d3d11.h>
 
-#include <DxUtility.h>
+static winrt::com_ptr<IDXGIAdapter1> GetAdapter(LUID adapterId) {
+  // Create the DXGI factory.
+  winrt::com_ptr<IDXGIFactory1> dxgiFactory;
+  if (FAILED(CreateDXGIFactory1(winrt::guid_of<IDXGIFactory1>(),
+                                dxgiFactory.put_void()))) {
+    PLOG_FATAL << "CreateDXGIFactory1";
+    return {};
+  }
+
+  for (UINT adapterIndex = 0;; adapterIndex++) {
+    // EnumAdapters1 will fail with DXGI_ERROR_NOT_FOUND when there are no more
+    // adapters to enumerate.
+    winrt::com_ptr<IDXGIAdapter1> dxgiAdapter;
+    if (FAILED(dxgiFactory->EnumAdapters1(adapterIndex, dxgiAdapter.put()))) {
+      PLOG_FATAL << "IDXGIFactory1::EnumAdapters1";
+      return {};
+    }
+
+    DXGI_ADAPTER_DESC1 adapterDesc;
+    if (FAILED(dxgiAdapter->GetDesc1(&adapterDesc))) {
+      PLOG_FATAL << "IDXGIAdapter1::GetDesc1";
+      return {};
+    }
+    if (memcmp(&adapterDesc.AdapterLuid, &adapterId, sizeof(adapterId)) == 0) {
+      PLOG_DEBUG << "Using graphics adapter "
+                 << std::wstring_view(adapterDesc.Description);
+      return dxgiAdapter;
+    }
+  }
+}
 
 struct PlatformWin32D3D11Impl {
 
@@ -76,7 +104,7 @@ struct PlatformWin32D3D11Impl {
     }
 
     const winrt::com_ptr<IDXGIAdapter1> adapter =
-        sample::dx::GetAdapter(graphicsRequirements_.adapterLuid);
+        GetAdapter(graphicsRequirements_.adapterLuid);
     CreateD3D11DeviceAndContext(adapter.get(), featureLevels, m_device.put(),
                                 m_deviceContext.put());
     return m_device;

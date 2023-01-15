@@ -1,19 +1,11 @@
 #pragma once
+#include "xrfw_render_func.h"
 #include <chrono>
-#include <openxr/openxr.h>
 #include <ostream>
 #include <span>
 #include <stdint.h>
 #include <string_view>
 #include <vector>
-
-struct XrfwSwapchains {
-  XrSwapchain leftOrVrpt = nullptr;
-  XrSwapchain right = nullptr;
-  uint64_t format = 0;
-  int width = 0;
-  int height = 0;
-};
 
 #ifdef XR_USE_PLATFORM_WIN32
 #ifdef XRFW_BUILD
@@ -54,13 +46,6 @@ struct XrfwViewMatrices {
 };
 XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime, XrfwViewMatrices *viewMatrix);
 XRFW_API XrBool32 xrfwEndFrame();
-
-using RenderFunc =
-    void (*)(const XrSwapchainImageBaseHeader *leftOrVrptSwapchainImage,
-             const XrSwapchainImageBaseHeader *rightSwapchainImage,
-             const XrfwSwapchains &info, const float projection[16],
-             const float view[16], const float rightProjection[16],
-             const float rightView[16], void *user);
 
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw_win32.h"

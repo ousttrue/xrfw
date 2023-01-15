@@ -54,7 +54,7 @@ target_compile_options(${TARGET_NAME} PRIVATE -Wno-unused-parameter)
 #
 # xrfw
 #
-add_library(xrfw ../src/xrfw.cpp ../src/xrfw_android.cpp)
+add_library(xrfw ../src/xrfw.cpp ../src/xrfw_android.cpp ../src/impl/xrfw_impl_android_opengl_es.cpp)
 target_include_directories(xrfw PUBLIC ../include)
 target_link_libraries(xrfw PUBLIC plog openxr_loader android_native_app_glue)
 target_compile_definitions(xrfw PUBLIC XR_USE_GRAPHICS_API_OPENGL_ES
@@ -63,7 +63,7 @@ target_compile_definitions(xrfw PUBLIC XR_USE_GRAPHICS_API_OPENGL_ES
 #
 # xrfw_sample
 #
-add_library(xrfw_sample SHARED main.cpp ../platform_android.cpp oglrenderer.cpp
+add_library(xrfw_sample SHARED main.cpp oglrenderer.cpp
                                ogldrawable.cpp)
 target_link_libraries(
   xrfw_sample

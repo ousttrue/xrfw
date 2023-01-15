@@ -1,4 +1,5 @@
 #ifdef XR_USE_PLATFORM_WIN32
+#include <xrfw_impl_win32_opengl.h>
 #include <windows.h>
 
 #include <openxr/openxr_platform.h>
@@ -166,6 +167,11 @@ XrSession XrfwPlatformWin32OpenGL::CreateSession(XrfwSwapchains *swapchains) {
 bool XrfwPlatformWin32OpenGL::BeginFrame() { return impl_->BeginFrame(); }
 void XrfwPlatformWin32OpenGL::EndFrame(RenderFunc render, void *user) {
   impl_->EndFrame(render, user);
+}
+uint32_t XrfwPlatformWin32OpenGL::CastTexture(
+    const XrSwapchainImageBaseHeader *swapchainImage) {
+  return reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
+      ->image;
 }
 void XrfwPlatformWin32OpenGL::Sleep(std::chrono::milliseconds ms) {
   ::Sleep((uint32_t)ms.count());
