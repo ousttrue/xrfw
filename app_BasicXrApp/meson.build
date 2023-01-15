@@ -10,7 +10,6 @@ executable('BasicXrApp', [
     '../platform_win32_d3d11.cpp',
     'pch.cpp',
     'main.cpp',
-    # 'OpenXrProgram.cpp',
     'DxUtility.cpp',
     'CubeGraphics.cpp',
 ],

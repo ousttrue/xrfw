@@ -40,14 +40,6 @@ struct SwapchainInfo {
 std::unordered_map<XrSwapchain, SwapchainInfo> g_swapchainImages;
 
 XrFrameState g_frameState{XR_TYPE_FRAME_STATE};
-struct SwapchainIndex {
-  uint32_t index;
-  uint32_t arrayIndex;
-};
-// 0, 0 => 1, 0
-// or
-// 0, 0 => 0, 1 (use VPRT)
-std::vector<SwapchainIndex> g_projectionViewIndices = {};
 XrCompositionLayerProjectionView g_projectionViews[2];
 XrCompositionLayerProjection g_projection = {};
 
@@ -419,10 +411,6 @@ XRFW_API XrSwapchain xrfwCreateSwapchain(
                      .images = swapchainImages,
                      .useVprt = (arraySize == 2),
                  }));
-  g_projectionViewIndices.push_back({index, 0});
-  if (arraySize == 2) {
-    g_projectionViewIndices.push_back({index, 1});
-  }
 
   *width = swapchainCreateInfo.width;
   *height = swapchainCreateInfo.height;
@@ -446,7 +434,8 @@ xrfwAcquireSwapchain(XrSwapchain swapchain) {
       .imageArrayIndex = 0,
   };
   if (info.useVprt) {
-    g_projectionViews[info.index].subImage = {
+    assert(info.index == 0);
+    g_projectionViews[1].subImage = {
         .swapchain = swapchain,
         .imageRect =
             {
@@ -671,17 +660,13 @@ XRFW_API XrBool32 xrfwBeginFrame(XrTime *outtime,
     poseToMatrix((XrMatrix4x4f *)viewMatrix->rightView, views[1].pose);
   }
 
-  for (auto key : g_projectionViewIndices) {
-    if (key.index == 0 && key.arrayIndex == 0) {
-      g_projectionViews[0].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-      g_projectionViews[0].pose = views[0].pose;
-      g_projectionViews[0].fov = views[0].fov;
-    } else {
-      g_projectionViews[1].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-      g_projectionViews[1].pose = views[1].pose;
-      g_projectionViews[1].fov = views[1].fov;
-    }
-  }
+  g_projectionViews[0].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+  g_projectionViews[0].pose = views[0].pose;
+  g_projectionViews[0].fov = views[0].fov;
+
+  g_projectionViews[1].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+  g_projectionViews[1].pose = views[1].pose;
+  g_projectionViews[1].fov = views[1].fov;
 
   g_projection = {
       .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
