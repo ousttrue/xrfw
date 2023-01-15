@@ -3,6 +3,7 @@
 
 #include "CubeGraphics.h"
 #include "DxUtility.h"
+#include <XrUtility/XrError.h>
 
 namespace CubeShader {
 struct Vertex {
@@ -94,6 +95,13 @@ constexpr char ShaderHlsl[] = R"_(
 } // namespace CubeShader
 
 namespace sample {
+void Cube::StoreMatrix(DirectX::XMFLOAT4X4 *m) const {
+  auto trs = DirectX::XMMatrixTransformation(
+      {}, {}, DirectX::XMLoadFloat3(&Scale), {},
+      DirectX::XMLoadFloat4(&Rotation), DirectX::XMLoadFloat3(&Translation));
+  DirectX::XMStoreFloat4x4(m, DirectX::XMMatrixTranspose(trs));
+}
+
 CubeGraphics::CubeGraphics(winrt::com_ptr<ID3D11Device> device)
     : m_device(device) {
   m_device->GetImmediateContext(m_deviceContext.put());
@@ -168,9 +176,8 @@ void CubeGraphics::RenderView(ID3D11Texture2D *colorTexture,
                               int height, const float projection[16],
                               const float view[16],
                               const float rightProjection[16],
-                              const float rightView[16]) {
-
-  std::vector<const Cube *> cubes;
+                              const float rightView[16],
+                              std::span<Cube *> cubes) {
 
   const uint32_t viewInstanceCount = 2; // (uint32_t)viewProjections.size();
   CHECK_MSG(viewInstanceCount <= CubeShader::MaxViewInstance,
@@ -260,12 +267,7 @@ void CubeGraphics::RenderView(ID3D11Texture2D *colorTexture,
     // Compute and update the model transform for each cube, transpose for
     // shader usage.
     CubeShader::ModelConstantBuffer model;
-    const DirectX::XMMATRIX scaleMatrix =
-        DirectX::XMMatrixScaling(cube->Scale.x, cube->Scale.y, cube->Scale.z);
-    DirectX::XMStoreFloat4x4(
-        &model.Model,
-        DirectX::XMMatrixTranspose(scaleMatrix *
-                                   xr::math::LoadXrPose(cube->PoseInAppSpace)));
+    cube->StoreMatrix(&model.Model);
     m_deviceContext->UpdateSubresource(m_modelCBuffer.get(), 0, nullptr, &model,
                                        0, 0);
 

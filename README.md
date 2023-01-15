@@ -21,7 +21,7 @@ Windows は `meson` で、 Android は gradle から使えるように `cmake` �
 
 |platform|graphics||
 |-|-|-|
-|XR_USE_PLATFORM_WIN32|XR_USE_GRAPHICS_API_D3D11|⛏️|
+|XR_USE_PLATFORM_WIN32|XR_USE_GRAPHICS_API_D3D11|✅ VPRT work|
 |XR_USE_PLATFORM_WIN32|XR_USE_GRAPHICS_API_OPENGL|✅ glfw + glew|
 |XR_USE_PLATFORM_WIN32|XR_USE_GRAPHICS_API_VULKAN||
 |XR_USE_PLATFORM_ANDROID|XR_USE_GRAPHICS_API_OPENGL_ES|✅ ndk|

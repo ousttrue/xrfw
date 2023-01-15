@@ -4,6 +4,11 @@
 #include <plog/Log.h>
 #include <xrfw.h>
 
+struct Context {
+  sample::CubeGraphics graphics;
+  std::vector<sample::Cube *> visible_cubes;
+};
+
 int main(int argc, char **argv) {
   XrfwPlatformWin32D3D11 platform;
   auto instance = platform.CreateInstance();
@@ -16,18 +21,24 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  sample::CubeGraphics graphics(device);
+  Context context{
+      .graphics = sample::CubeGraphics(device),
+  };
+  sample::Cube origin = {};
+  context.visible_cubes.push_back(&origin);
+
   auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
                        const XrSwapchainImageBaseHeader *,
                        const XrfwSwapchains &info, const float projection[16],
                        const float view[16], const float rightProjection[16],
                        const float rightView[16], void *user) {
-    ((sample::CubeGraphics *)user)
-        ->RenderView(xrfwCastTextureD3D11(swapchainImage),
-                     (DXGI_FORMAT)info.format, info.width, info.height,
-                     projection, view, rightProjection, rightView);
+    auto context = ((Context *)user);
+    context->graphics.RenderView(xrfwCastTextureD3D11(swapchainImage),
+                                 (DXGI_FORMAT)info.format, info.width,
+                                 info.height, projection, view, rightProjection,
+                                 rightView, context->visible_cubes);
   };
-  auto ret = xrfwSession(platform, renderFunc, &graphics);
+  auto ret = xrfwSession(platform, renderFunc, &context);
 
   xrfwDestroyInstance();
   return ret;

@@ -1,27 +1,19 @@
 #pragma once
-#include <XrUtility/XrError.h>
-#include <XrUtility/XrHandle.h>
-#include <XrUtility/XrMath.h>
-#include <XrUtility/XrString.h>
+#include <DirectXMath.h>
 #include <d3d11.h>
-#include <openxr/openxr.h>
+#include <span>
 #include <winrt/base.h> // winrt::com_ptr
 
 namespace sample {
 
 struct Cube {
-  xr::SpaceHandle Space{};
-  std::optional<XrPosef>
-      PoseInSpace{}; // Relative pose in cube Space. Default to identity.
-  XrVector3f Scale{0.1f, 0.1f, 0.1f};
-
-  XrPosef PoseInAppSpace =
-      xr::math::Pose::Identity(); // Cube pose in app space that gets updated
-                                  // every frame
+  DirectX::XMFLOAT3 Scale{0.1f, 0.1f, 0.1f};
+  DirectX::XMFLOAT4 Rotation{0, 0, 0, 1};
+  DirectX::XMFLOAT3 Translation{0, 0, 0};
+  void StoreMatrix(DirectX::XMFLOAT4X4 *m) const;
 };
 
 class CubeGraphics {
-
 public:
   CubeGraphics(winrt::com_ptr<ID3D11Device> device);
   CubeGraphics(const CubeGraphics &) = delete;
@@ -29,7 +21,8 @@ public:
   void RenderView(ID3D11Texture2D *colorTexture,
                   DXGI_FORMAT colorSwapchainFormat, int width, int height,
                   const float projection[16], const float view[16],
-                  const float rightProjection[16], const float rightView[16]);
+                  const float rightProjection[16], const float rightView[16],
+                  std::span<Cube *> cubes);
 
 private:
   void InitializeD3DResources();
