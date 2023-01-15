@@ -1,17 +1,13 @@
 #ifdef XR_USE_PLATFORM_WIN32
 #ifdef XR_USE_GRAPHICS_API_D3D11
-#include <d3d11.h>
-
-#include <openxr/openxr_platform.h>
+#include <xrfw_impl_win32_d3d11.h>
+#include <algorithm>
 #include <plog/Log.h>
+#include <vector>
+#include <winrt/base.h> // winrt::com_ptr
 #include <xrfw.h>
 
-#include <algorithm>
-#include <vector>
-
-#include <winrt/base.h> // winrt::com_ptr
-
-#include <DxUtility.h>
+#include "DxUtility.h"
 
 struct PlatformWin32D3D11Impl {
 

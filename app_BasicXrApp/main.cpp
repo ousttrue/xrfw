@@ -3,6 +3,7 @@
 #include "CubeGraphics.h"
 #include <plog/Log.h>
 #include <xrfw.h>
+#include <xrfw_impl_win32_d3d11.h>
 
 struct Context {
   sample::CubeGraphics graphics;

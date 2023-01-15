@@ -1,5 +1,6 @@
 #include <plog/Log.h>
 #include <xrfw.h>
+#include <xrfw_impl_win32_opengl.h>
 
 #include "render_scene.h"
 template <typename T> int run(T &platform) {

@@ -1,0 +1,3 @@
+option('tests', type: 'boolean', value: false)
+option('impl_opengl', type: 'boolean', value: false)
+option('impl_d3d11', type: 'boolean', value: false)

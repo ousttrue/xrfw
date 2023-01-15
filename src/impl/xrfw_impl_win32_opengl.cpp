@@ -1,4 +1,5 @@
 #ifdef XR_USE_PLATFORM_WIN32
+#include <xrfw_impl_win32_opengl.h>
 #include <windows.h>
 
 #include <openxr/openxr_platform.h>

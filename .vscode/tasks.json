@@ -6,19 +6,19 @@
         {
             "label": "configure",
             "type": "shell",
-            "command": "meson setup builddir --prefix ${workspaceFolder}/prefix",
+            "command": "meson setup builddir --prefix ${workspaceFolder}/prefix -Dimpl_d3d11=true -Dimpl_opengl=true",
             "problemMatcher": [],
         },
         {
             "label": "configure(wipe)",
             "type": "shell",
-            "command": "meson setup --wipe builddir --prefix ${workspaceFolder}/prefix",
+            "command": "meson setup --wipe builddir --prefix ${workspaceFolder}/prefix -Dimpl_d3d11=true -Dimpl_opengl=true",
             "problemMatcher": [],
         },
         {
             "label": "configure(reconfigure)",
             "type": "shell",
-            "command": "meson setup --reconfigure builddir --prefix ${workspaceFolder}/prefix",
+            "command": "meson setup --reconfigure builddir --prefix ${workspaceFolder}/prefix -Dimpl_d3d11=true -Dimpl_opengl=true",
             "problemMatcher": [],
         },
         {
