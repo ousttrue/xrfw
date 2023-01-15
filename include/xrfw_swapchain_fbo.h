@@ -30,7 +30,7 @@ public:
   }
 
   void Begin(uint32_t colorTexture, int width, int height,
-                const float clearColor[4]) {
+             const float clearColor[4]) {
     if (colorTexture) {
       glBindFramebuffer(GL_FRAMEBUFFER, m_swapchainFramebuffer);
       const uint32_t depthTexture = GetDepthTexture(colorTexture);
@@ -38,6 +38,8 @@ public:
                              GL_TEXTURE_2D, colorTexture, 0);
       glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
                              depthTexture, 0);
+    } else {
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));

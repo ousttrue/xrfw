@@ -33,13 +33,12 @@ template <typename T> int run(T &platform) {
     pContext->fbo.Begin(pContext->platform.CastTexture(swapchainImage),
                         info.width, info.height, &pContext->clearColor[0]);
     pContext->drawable->Render(projection, view, pContext->cubes);
-    pContext->fbo.End();
     if (rightProjection) {
       pContext->fbo.Begin(pContext->platform.CastTexture(rightSwapchainImage),
                           info.width, info.height, &pContext->clearColor[0]);
       pContext->drawable->Render(rightProjection, rightView, pContext->cubes);
-      pContext->fbo.End();
     }
+    pContext->fbo.End();
   };
   return xrfwSession(platform, renderFunc, &context);
 }

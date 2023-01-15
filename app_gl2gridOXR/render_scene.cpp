@@ -141,90 +141,16 @@ int init_gles_scene() {
   return 0;
 }
 
-class FBO {
-  uint32_t fbo_ = 0;
-  std::unordered_map<uint32_t, uint32_t> m_colorToDepthMap;
-
-public:
-  void Bind(uint32_t colorTexture) {
-    if (colorTexture) {
-      if (fbo_ == 0) {
-        glGenFramebuffers(1, &fbo_);
-      }
-      glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-      const uint32_t depthTexture = GetDepthTexture(colorTexture);
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                             GL_TEXTURE_2D, colorTexture, 0);
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
-                             depthTexture, 0);
-    } else {
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-  }
-
-private:
-  uint32_t GetDepthTexture(uint32_t colorTexture) {
-    // If a depth-stencil view has already been created for this back-buffer,
-    // use it.
-    auto depthBufferIt = m_colorToDepthMap.find(colorTexture);
-    if (depthBufferIt != m_colorToDepthMap.end()) {
-      return depthBufferIt->second;
-    }
-
-    // This back-buffer has no corresponding depth-stencil texture, so create
-    // one with matching dimensions.
-
-    GLint width;
-    GLint height;
-    glBindTexture(GL_TEXTURE_2D, colorTexture);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
-
-    uint32_t depthTexture;
-    glGenTextures(1, &depthTexture);
-    glBindTexture(GL_TEXTURE_2D, depthTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0,
-                 GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-
-    m_colorToDepthMap.insert(std::make_pair(colorTexture, depthTexture));
-
-    return depthTexture;
-  }
-};
-FBO g_fbo;
-
-void render_gles_scene(uint32_t colorTexture, int width, int height,
-                      const float projection[16], const float view[16]) {
-  int view_x = 0;
-  int view_y = 0;
-  int view_w = width;
-  int view_h = height;
-
-  g_fbo.Bind(colorTexture);
-
-  glViewport(view_x, view_y, view_w, view_h);
-
-  glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  /* ------------------------------------------- *
-   *  Render
-   * ------------------------------------------- */
-
+void render_gles_scene(int view_w, int view_h, const float projection[16],
+                       const float view[16]) {
   draw_grid(view_w, view_h);
-
   {
     int cx = view_w / 2;
     int cy = view_h / 2;
 
     char strbuf[128];
-    sprintf(strbuf, "Viewport(%d, %d, %d, %d)", view_x, view_y, view_w, view_h);
+    // sprintf(strbuf, "Viewport(%d, %d, %d, %d)", view_x, view_y, view_w,
+    // view_h);
     draw_dbgstr(strbuf, cx + 100, cy + 100);
   }
-
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

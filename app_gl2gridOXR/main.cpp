@@ -1,23 +1,33 @@
 #include <plog/Log.h>
 #include <xrfw.h>
 #include <xrfw_impl_win32_opengl.h>
+#include <xrfw_swapchain_fbo.h>
 
 #include "render_scene.h"
-template <typename T> int run(T &platform) {
-  init_gles_scene();
-  auto renderFunc = [](const XrSwapchainImageBaseHeader *swapchainImage,
+
+static float g_clearColor[] = {0.1f, 0.1f, 0.1f, 1.0f};
+
+static void renderFunc(const XrSwapchainImageBaseHeader *swapchainImage,
                        const XrSwapchainImageBaseHeader *rightSwapchainImage,
                        const XrfwSwapchains &info, const float projection[16],
                        const float view[16], const float rightProjection[16],
                        const float rightView[16], void *user) {
-    render_gles_scene(xrfwCastTextureWin32OpenGL(swapchainImage), info.width,
-                      info.height, projection, view);
-    if (rightProjection) {
-      render_gles_scene(xrfwCastTextureWin32OpenGL(rightSwapchainImage),
-                        info.width, info.height, rightProjection, rightView);
-    }
-  };
-  return xrfwSession(platform, renderFunc, nullptr);
+  auto fbo = (XrfwSwapchainFbo *)user;
+  fbo->Begin(xrfwCastTextureWin32OpenGL(swapchainImage), info.width,
+             info.height, g_clearColor);
+  render_gles_scene(info.width, info.height, projection, view);
+  if (rightProjection) {
+    fbo->Begin(xrfwCastTextureWin32OpenGL(rightSwapchainImage), info.width,
+               info.height, g_clearColor);
+    render_gles_scene(info.width, info.height, rightProjection, rightView);
+  }
+  fbo->End();
+}
+
+template <typename T> int run(T &platform) {
+  init_gles_scene();
+  XrfwSwapchainFbo fbo;
+  return xrfwSession(platform, renderFunc, &fbo);
 }
 
 #ifdef XR_USE_PLATFORM_WIN32
