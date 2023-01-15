@@ -48,7 +48,6 @@ struct XrfwPlatformWin32D3D11 {
   XrSession CreateSession(struct XrfwSwapchains *swapchains);
   bool BeginFrame();
   void EndFrame(RenderFunc render, void *user);
-  uint32_t CastTexture(const XrSwapchainImageBaseHeader *swapchainImage);
   void Sleep(std::chrono::milliseconds ms);
 };
 #endif

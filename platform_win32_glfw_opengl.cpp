@@ -167,6 +167,11 @@ bool XrfwPlatformWin32OpenGL::BeginFrame() { return impl_->BeginFrame(); }
 void XrfwPlatformWin32OpenGL::EndFrame(RenderFunc render, void *user) {
   impl_->EndFrame(render, user);
 }
+uint32_t XrfwPlatformWin32OpenGL::CastTexture(
+    const XrSwapchainImageBaseHeader *swapchainImage) {
+  return reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
+      ->image;
+}
 void XrfwPlatformWin32OpenGL::Sleep(std::chrono::milliseconds ms) {
   ::Sleep((uint32_t)ms.count());
 }
