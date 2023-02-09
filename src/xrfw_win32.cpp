@@ -149,7 +149,9 @@ static bool graphicsRequirementsWin32D3D11(XrInstance instance,
 
   auto graphicsRequirements =
       (XrGraphicsRequirementsD3D11KHR *)outGraphicsRequirements;
-  graphicsRequirements->type = XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR;
+  *graphicsRequirements = XrGraphicsRequirementsD3D11KHR{
+      .type = XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR,
+  };
   result = pfnGetD3D11GraphicsRequirementsKHR(instance, systemId,
                                               graphicsRequirements);
   if (XR_FAILED(result)) {
