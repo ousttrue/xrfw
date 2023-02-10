@@ -1,4 +1,4 @@
-#include "CubeGraphics.h"
+#include <cuber/DxCubeStereoRenderer.h>
 #include <plog/Log.h>
 #include <xrfw.h>
 #include <xrfw_impl_win32_d3d11.h>
@@ -16,9 +16,58 @@ struct Cube {
 };
 
 struct Context {
-  sample::CubeGraphics graphics;
+  winrt::com_ptr<ID3D11Device> m_device;
+  winrt::com_ptr<ID3D11DeviceContext> m_deviceContext;
+
+  cuber::DxCubeStereoRenderer graphics;
   std::vector<Cube> visible_cubes;
   std::vector<DirectX::XMFLOAT4X4> instances;
+
+  Context(const winrt::com_ptr<ID3D11Device> &device)
+      : m_device(device), graphics(device) {
+    m_device->GetImmediateContext(m_deviceContext.put());
+  }
+
+  void SetRTV(ID3D11Texture2D *colorTexture, int width, int height,
+              DXGI_FORMAT colorSwapchainFormat) {
+    CD3D11_VIEWPORT viewport{
+        (float)0,
+        (float)0,
+        (float)width,
+        (float)height,
+    };
+    m_deviceContext->RSSetViewports(1, &viewport);
+
+    // Create RenderTargetView with the original swapchain format (swapchain
+    // image is typeless).
+    winrt::com_ptr<ID3D11RenderTargetView> renderTargetView;
+    const CD3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc(
+        D3D11_RTV_DIMENSION_TEXTURE2DARRAY, colorSwapchainFormat);
+    m_device->CreateRenderTargetView(colorTexture, &renderTargetViewDesc,
+                                     renderTargetView.put());
+
+    // Clear swapchain and depth buffer. NOTE: This will clear the entire render
+    // target view, not just the specified view.
+    constexpr DirectX::XMFLOAT4 renderTargetClearColor = {
+        0.184313729f,
+        0.309803933f,
+        0.309803933f,
+        1.000000000f,
+    };
+    m_deviceContext->ClearRenderTargetView(renderTargetView.get(),
+                                           &renderTargetClearColor.x);
+    // m_deviceContext->ClearDepthStencilView(
+    //     depthStencilView.get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
+    //     depthClearValue, 0);
+    // m_deviceContext->OMSetDepthStencilState(
+    //     reversedZ ? m_reversedZDepthNoStencilTest.get() : nullptr, 0);
+
+    ID3D11RenderTargetView *renderTargets[] = {renderTargetView.get()};
+    m_deviceContext->OMSetRenderTargets((UINT)std::size(renderTargets),
+                                        renderTargets,
+                                        // depthStencilView.get()
+                                        nullptr);
+  }
 
   static void Render(const XrSwapchainImageBaseHeader *swapchainImage,
                      const XrSwapchainImageBaseHeader *,
@@ -32,10 +81,10 @@ struct Context {
       context->instances.push_back({});
       cube.StoreMatrix(&context->instances.back());
     }
-    context->graphics.SetRTV(xrfwCastTextureD3D11(swapchainImage), info.width,
-                             info.height, (DXGI_FORMAT)info.format);
-    context->graphics.RenderView(projection, view, rightProjection, rightView,
-                                 context->instances);
+    context->SetRTV(xrfwCastTextureD3D11(swapchainImage), info.width,
+                    info.height, (DXGI_FORMAT)info.format);
+    context->graphics.Render<DirectX::XMFLOAT4X4>(
+        projection, view, rightProjection, rightView, context->instances);
   }
 };
 
@@ -52,9 +101,7 @@ int main(int argc, char **argv) {
   }
 
   // cubes
-  Context context{
-      .graphics = sample::CubeGraphics(device),
-  };
+  Context context(device);
   context.visible_cubes.push_back({});
   context.visible_cubes.push_back({});
   context.visible_cubes.back().Translation = {1, 0, 0};
