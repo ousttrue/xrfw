@@ -50,10 +50,6 @@ constexpr unsigned short c_cubeIndices[] = {
     30, 31, 32, 33, 34, 35, // +Z
 };
 
-struct ModelConstantBuffer {
-  DirectX::XMFLOAT4X4 Model;
-};
-
 struct ViewProjectionConstantBuffer {
   DirectX::XMFLOAT4X4 ViewProjection[2];
 };
@@ -62,45 +58,51 @@ constexpr uint32_t MaxViewInstance = 2;
 
 // Separate entrypoints for the vertex and pixel shader functions.
 constexpr char ShaderHlsl[] = R"_(
-            struct VSOutput {
-                float4 Pos : SV_POSITION;
-                float3 Color : COLOR0;
-                uint viewId : SV_RenderTargetArrayIndex;
-            };
-            struct VSInput {
-                float3 Pos : POSITION;
-                float3 Color : COLOR0;
-                uint instId : SV_InstanceID;
-            };
-            cbuffer ModelConstantBuffer : register(b0) {
-                float4x4 Model;
-            };
-            cbuffer ViewProjectionConstantBuffer : register(b1) {
-                float4x4 ViewProjection[2];
-            };
+#pragma pack_matrix(row_major)
 
-            VSOutput MainVS(VSInput input) {
-                VSOutput output;
-                output.Pos = mul(mul(float4(input.Pos, 1), Model), ViewProjection[input.instId]);
-                output.Color = input.Color;
-                output.viewId = input.instId;
-                return output;
-            }
+cbuffer ViewProjectionConstantBuffer : register(b0) {
+    float4x4 ViewProjection[2];
+};
+struct VSInput {
+    float3 Pos : POSITION;
+    float3 Color : COLOR0;
+    float4 Row0: ROW0;
+    float4 Row1: ROW1;
+    float4 Row2: ROW2;
+    float4 Row3: ROW3;
+    uint instId : SV_InstanceID;
+};
+struct VSOutput {
+    float4 Pos : SV_POSITION;
+    float3 Color : COLOR0;
+    uint viewId : SV_RenderTargetArrayIndex;
+};
 
-            float4 MainPS(VSOutput input) : SV_TARGET {
-                return float4(input.Color, 1);
-            }
-            )_";
+float4x4 transform(float4 r0, float4 r1, float4 r2, float4 r3)
+{
+  return float4x4(
+    r0.x, r0.y, r0.z, r0.w,
+    r1.x, r1.y, r1.z, r1.w,
+    r2.x, r2.y, r2.z, r2.w,
+    r3.x, r3.y, r3.z, r3.w
+  );
+}
 
+VSOutput MainVS(VSInput IN) {
+    VSOutput output;
+    output.Pos = mul(mul(float4(IN.Pos, 1), transform(IN.Row0, IN.Row1, IN.Row2, IN.Row3)), ViewProjection[IN.instId % 2]);
+    output.Color = IN.Color;
+    output.viewId = IN.instId % 2;
+    return output;
+}
+
+float4 MainPS(VSOutput IN) : SV_TARGET {
+    return float4(IN.Color, 1);
+}
+)_";
 } // namespace CubeShader
 
 namespace sample {
-void Cube::StoreMatrix(DirectX::XMFLOAT4X4 *m) const {
-  auto trs = DirectX::XMMatrixTransformation(
-      {}, {}, DirectX::XMLoadFloat3(&Scale), {},
-      DirectX::XMLoadFloat4(&Rotation), DirectX::XMLoadFloat3(&Translation));
-  DirectX::XMStoreFloat4x4(m, DirectX::XMMatrixTranspose(trs));
-}
 
 CubeGraphics::CubeGraphics(winrt::com_ptr<ID3D11Device> device)
     : m_device(device) {
@@ -109,66 +111,136 @@ CubeGraphics::CubeGraphics(winrt::com_ptr<ID3D11Device> device)
 }
 
 void CubeGraphics::InitializeD3DResources() {
-  const winrt::com_ptr<ID3DBlob> vertexShaderBytes =
-      dx::CompileShader(CubeShader::ShaderHlsl, "MainVS", "vs_5_0");
-  CHECK_HRCMD(m_device->CreateVertexShader(
-      vertexShaderBytes->GetBufferPointer(), vertexShaderBytes->GetBufferSize(),
-      nullptr, m_vertexShader.put()));
+  // vs ps layout
+  {
+    const winrt::com_ptr<ID3DBlob> vertexShaderBytes =
+        dx::CompileShader(CubeShader::ShaderHlsl, "MainVS", "vs_5_0");
+    CHECK_HRCMD(m_device->CreateVertexShader(
+        vertexShaderBytes->GetBufferPointer(),
+        vertexShaderBytes->GetBufferSize(), nullptr, m_vertexShader.put()));
 
-  const winrt::com_ptr<ID3DBlob> pixelShaderBytes =
-      dx::CompileShader(CubeShader::ShaderHlsl, "MainPS", "ps_5_0");
-  CHECK_HRCMD(m_device->CreatePixelShader(pixelShaderBytes->GetBufferPointer(),
-                                          pixelShaderBytes->GetBufferSize(),
-                                          nullptr, m_pixelShader.put()));
+    const winrt::com_ptr<ID3DBlob> pixelShaderBytes =
+        dx::CompileShader(CubeShader::ShaderHlsl, "MainPS", "ps_5_0");
+    CHECK_HRCMD(m_device->CreatePixelShader(
+        pixelShaderBytes->GetBufferPointer(), pixelShaderBytes->GetBufferSize(),
+        nullptr, m_pixelShader.put()));
 
-  const D3D11_INPUT_ELEMENT_DESC vertexDesc[] = {
-      {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
-       D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-      {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT,
-       D3D11_INPUT_PER_VERTEX_DATA, 0},
-  };
+    const D3D11_INPUT_ELEMENT_DESC vertexDesc[] = {
+        // Vertex
+        {
+            "POSITION",
+            0,
+            DXGI_FORMAT_R32G32B32_FLOAT,
+            0,
+            D3D11_APPEND_ALIGNED_ELEMENT,
+            D3D11_INPUT_PER_VERTEX_DATA,
+            0,
+        },
+        {
+            "COLOR",
+            0,
+            DXGI_FORMAT_R32G32B32_FLOAT,
+            0,
+            D3D11_APPEND_ALIGNED_ELEMENT,
+            D3D11_INPUT_PER_VERTEX_DATA,
+            0,
+        },
+        // Instance
+        {
+            "ROW",
+            0,
+            DXGI_FORMAT_R32G32B32A32_FLOAT,
+            1,
+            D3D11_APPEND_ALIGNED_ELEMENT,
+            D3D11_INPUT_PER_INSTANCE_DATA,
+            2,
+        },
+        {
+            "ROW",
+            1,
+            DXGI_FORMAT_R32G32B32A32_FLOAT,
+            1,
+            D3D11_APPEND_ALIGNED_ELEMENT,
+            D3D11_INPUT_PER_INSTANCE_DATA,
+            2,
+        },
+        {
+            "ROW",
+            2,
+            DXGI_FORMAT_R32G32B32A32_FLOAT,
+            1,
+            D3D11_APPEND_ALIGNED_ELEMENT,
+            D3D11_INPUT_PER_INSTANCE_DATA,
+            2,
+        },
+        {
+            "ROW",
+            3,
+            DXGI_FORMAT_R32G32B32A32_FLOAT,
+            1,
+            D3D11_APPEND_ALIGNED_ELEMENT,
+            D3D11_INPUT_PER_INSTANCE_DATA,
+            2,
+        },
+    };
 
-  CHECK_HRCMD(m_device->CreateInputLayout(
-      vertexDesc, (UINT)std::size(vertexDesc),
-      vertexShaderBytes->GetBufferPointer(), vertexShaderBytes->GetBufferSize(),
-      m_inputLayout.put()));
+    CHECK_HRCMD(m_device->CreateInputLayout(
+        vertexDesc, (UINT)std::size(vertexDesc),
+        vertexShaderBytes->GetBufferPointer(),
+        vertexShaderBytes->GetBufferSize(), m_inputLayout.put()));
+  }
 
-  const CD3D11_BUFFER_DESC modelConstantBufferDesc(
-      sizeof(CubeShader::ModelConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
-  CHECK_HRCMD(m_device->CreateBuffer(&modelConstantBufferDesc, nullptr,
-                                     m_modelCBuffer.put()));
+  // VP
+  {
+    const CD3D11_BUFFER_DESC viewProjectionConstantBufferDesc(
+        sizeof(CubeShader::ViewProjectionConstantBuffer),
+        D3D11_BIND_CONSTANT_BUFFER);
+    CHECK_HRCMD(m_device->CreateBuffer(&viewProjectionConstantBufferDesc,
+                                       nullptr, m_viewProjectionCBuffer.put()));
+  }
 
-  const CD3D11_BUFFER_DESC viewProjectionConstantBufferDesc(
-      sizeof(CubeShader::ViewProjectionConstantBuffer),
-      D3D11_BIND_CONSTANT_BUFFER);
-  CHECK_HRCMD(m_device->CreateBuffer(&viewProjectionConstantBufferDesc, nullptr,
-                                     m_viewProjectionCBuffer.put()));
+  // vertex
+  {
+    const D3D11_SUBRESOURCE_DATA vertexBufferData{CubeShader::c_cubeVertices};
+    const CD3D11_BUFFER_DESC vertexBufferDesc(
+        sizeof(CubeShader::c_cubeVertices), D3D11_BIND_VERTEX_BUFFER);
+    CHECK_HRCMD(m_device->CreateBuffer(&vertexBufferDesc, &vertexBufferData,
+                                       m_cubeVertexBuffer.put()));
+  }
+  // instance
+  {
+    const CD3D11_BUFFER_DESC vertexBufferDesc(
+        sizeof(DirectX::XMFLOAT4X4) * 65535, D3D11_BIND_VERTEX_BUFFER);
+    CHECK_HRCMD(m_device->CreateBuffer(&vertexBufferDesc, nullptr,
+                                       m_cubeInstanceBuffer.put()));
+  }
 
-  const D3D11_SUBRESOURCE_DATA vertexBufferData{CubeShader::c_cubeVertices};
-  const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(CubeShader::c_cubeVertices),
-                                            D3D11_BIND_VERTEX_BUFFER);
-  CHECK_HRCMD(m_device->CreateBuffer(&vertexBufferDesc, &vertexBufferData,
-                                     m_cubeVertexBuffer.put()));
+  // index
+  {
+    const D3D11_SUBRESOURCE_DATA indexBufferData{CubeShader::c_cubeIndices};
+    const CD3D11_BUFFER_DESC indexBufferDesc(sizeof(CubeShader::c_cubeIndices),
+                                             D3D11_BIND_INDEX_BUFFER);
+    CHECK_HRCMD(m_device->CreateBuffer(&indexBufferDesc, &indexBufferData,
+                                       m_cubeIndexBuffer.put()));
+  }
 
-  const D3D11_SUBRESOURCE_DATA indexBufferData{CubeShader::c_cubeIndices};
-  const CD3D11_BUFFER_DESC indexBufferDesc(sizeof(CubeShader::c_cubeIndices),
-                                           D3D11_BIND_INDEX_BUFFER);
-  CHECK_HRCMD(m_device->CreateBuffer(&indexBufferDesc, &indexBufferData,
-                                     m_cubeIndexBuffer.put()));
+  {
+    D3D11_FEATURE_DATA_D3D11_OPTIONS3 options;
+    m_device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS3, &options,
+                                  sizeof(options));
+    CHECK_MSG(options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer,
+              "This sample requires VPRT support. Adjust sample shaders on GPU "
+              "without VRPT.");
+  }
 
-  D3D11_FEATURE_DATA_D3D11_OPTIONS3 options;
-  m_device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS3, &options,
-                                sizeof(options));
-  CHECK_MSG(options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer,
-            "This sample requires VPRT support. Adjust sample shaders on GPU "
-            "without VRPT.");
-
-  CD3D11_DEPTH_STENCIL_DESC depthStencilDesc(CD3D11_DEFAULT{});
-  depthStencilDesc.DepthEnable = true;
-  depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-  depthStencilDesc.DepthFunc = D3D11_COMPARISON_GREATER;
-  CHECK_HRCMD(m_device->CreateDepthStencilState(
-      &depthStencilDesc, m_reversedZDepthNoStencilTest.put()));
+  {
+    CD3D11_DEPTH_STENCIL_DESC depthStencilDesc(CD3D11_DEFAULT{});
+    depthStencilDesc.DepthEnable = true;
+    depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    depthStencilDesc.DepthFunc = D3D11_COMPARISON_GREATER;
+    CHECK_HRCMD(m_device->CreateDepthStencilState(
+        &depthStencilDesc, m_reversedZDepthNoStencilTest.put()));
+  }
 }
 
 void CubeGraphics::RenderView(ID3D11Texture2D *colorTexture,
@@ -177,7 +249,7 @@ void CubeGraphics::RenderView(ID3D11Texture2D *colorTexture,
                               const float view[16],
                               const float rightProjection[16],
                               const float rightView[16],
-                              std::span<Cube *> cubes) {
+                              std::span<DirectX::XMFLOAT4X4> cubes) {
 
   const uint32_t viewInstanceCount = 2; // (uint32_t)viewProjections.size();
   CHECK_MSG(viewInstanceCount <= CubeShader::MaxViewInstance,
@@ -227,8 +299,9 @@ void CubeGraphics::RenderView(ID3D11Texture2D *colorTexture,
                                       // depthStencilView.get()
                                       nullptr);
 
-  ID3D11Buffer *const constantBuffers[] = {m_modelCBuffer.get(),
-                                           m_viewProjectionCBuffer.get()};
+  ID3D11Buffer *const constantBuffers[] = {
+      m_viewProjectionCBuffer.get(),
+  };
   m_deviceContext->VSSetConstantBuffers(0, (UINT)std::size(constantBuffers),
                                         constantBuffers);
   m_deviceContext->VSSetShader(m_vertexShader.get(), nullptr, 0);
@@ -240,20 +313,25 @@ void CubeGraphics::RenderView(ID3D11Texture2D *colorTexture,
         (DirectX::XMFLOAT4X4 *)(k == 0 ? view : rightView));
     const DirectX::XMMATRIX projectionMatrix = DirectX::XMLoadFloat4x4(
         (DirectX::XMFLOAT4X4 *)(k == 0 ? projection : rightProjection));
-
-    // Set view projection matrix for each view, transpose for shader
-    // usage.
-    DirectX::XMStoreFloat4x4(
-        &viewProjectionCBufferData.ViewProjection[k],
-        DirectX::XMMatrixTranspose(spaceToView * projectionMatrix));
+    DirectX::XMStoreFloat4x4(&viewProjectionCBufferData.ViewProjection[k],
+                             spaceToView * projectionMatrix);
   }
   m_deviceContext->UpdateSubresource(m_viewProjectionCBuffer.get(), 0, nullptr,
                                      &viewProjectionCBufferData, 0, 0);
 
   // Set cube primitive data.
-  const UINT strides[] = {sizeof(CubeShader::Vertex)};
-  const UINT offsets[] = {0};
-  ID3D11Buffer *vertexBuffers[] = {m_cubeVertexBuffer.get()};
+  const UINT strides[] = {
+      sizeof(CubeShader::Vertex),
+      sizeof(DirectX::XMFLOAT4X4),
+  };
+  const UINT offsets[] = {
+      0,
+      0,
+  };
+  ID3D11Buffer *vertexBuffers[] = {
+      m_cubeVertexBuffer.get(),
+      m_cubeInstanceBuffer.get(),
+  };
   m_deviceContext->IASetVertexBuffers(0, (UINT)std::size(vertexBuffers),
                                       vertexBuffers, strides, offsets);
   m_deviceContext->IASetIndexBuffer(m_cubeIndexBuffer.get(),
@@ -263,18 +341,28 @@ void CubeGraphics::RenderView(ID3D11Texture2D *colorTexture,
   m_deviceContext->IASetInputLayout(m_inputLayout.get());
 
   // Render each cube
-  for (const Cube *cube : cubes) {
-    // Compute and update the model transform for each cube, transpose for
-    // shader usage.
-    CubeShader::ModelConstantBuffer model;
-    cube->StoreMatrix(&model.Model);
-    m_deviceContext->UpdateSubresource(m_modelCBuffer.get(), 0, nullptr, &model,
-                                       0, 0);
 
-    // Draw the cube.
-    m_deviceContext->DrawIndexedInstanced(
-        (UINT)std::size(CubeShader::c_cubeIndices), viewInstanceCount, 0, 0, 0);
-  }
+  // Compute and update the model transform for each cube, transpose for
+  // shader usage.
+  //   CubeShader::ModelConstantBuffer model;
+  //   cube->StoreMatrix(&model.Model);
+
+  D3D11_BOX box{
+      .left = 0,
+      .top = 0,
+      .front = 0,
+      .right =
+          static_cast<uint32_t>(sizeof(DirectX::XMFLOAT4X4) * cubes.size()),
+      .bottom = 1,
+      .back = 1,
+  };
+  m_deviceContext->UpdateSubresource(m_cubeInstanceBuffer.get(), 0, &box,
+                                     cubes.data(), 0, 0);
+
+  // Draw the cube.
+  m_deviceContext->DrawIndexedInstanced(
+      (UINT)std::size(CubeShader::c_cubeIndices),
+      viewInstanceCount * cubes.size(), 0, 0, 0);
 }
 
 } // namespace sample
