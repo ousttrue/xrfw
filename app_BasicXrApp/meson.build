@@ -1,5 +1,4 @@
 executable('BasicXrApp', [
-    'pch.cpp',
     'main.cpp',
     'CubeGraphics.cpp',
     'DxUtility.cpp',

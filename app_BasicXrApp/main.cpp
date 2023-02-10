@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #include "CubeGraphics.h"
 #include <plog/Log.h>
 #include <xrfw.h>

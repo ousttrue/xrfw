@@ -16,9 +16,10 @@
     "mesonbuild.configureOnOpen": false,
     "testMate.cpp.test.executables": "{prefix}/**/*{test,Test,TEST}*",
     "cSpell.words": [
-        "xrfw",
         "openxr",
         "swapchain",
         "swapchains",
+        "XMFLOAT",
+        "xrfw"
     ]
 }
