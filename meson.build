@@ -72,9 +72,10 @@ if get_option('impl_opengl')
 endif
 if get_option('impl_d3d11')
     d3d11_dep = compiler.find_library('d3d11', required : false)
+    d3dcompiler_dep = compiler.find_library('d3dcompiler', required : false)
     dxgi_dep = compiler.find_library('dxgi', required : false)
     xrfw_impl_d3d11_deps = [
-        xrfw_dep, dxgi_dep, d3d11_dep, 
+        xrfw_dep, dxgi_dep, d3d11_dep, d3dcompiler_dep
     ]
     xrfw_impl_d3d11_args = [
         '-DXR_USE_PLATFORM_WIN32',

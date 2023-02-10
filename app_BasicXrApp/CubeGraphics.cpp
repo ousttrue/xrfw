@@ -1,9 +1,6 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-
 #include "CubeGraphics.h"
-#include "DxUtility.h"
 #include <XrUtility/XrError.h>
+#include <d3dcompiler.h>
 
 namespace CubeShader {
 struct Vertex {
@@ -104,6 +101,33 @@ float4 MainPS(VSOutput IN) : SV_TARGET {
 
 namespace sample {
 
+static winrt::com_ptr<ID3DBlob> CompileShader(const char *hlsl,
+                                              const char *entrypoint,
+                                              const char *shaderTarget) {
+  winrt::com_ptr<ID3DBlob> compiled;
+  winrt::com_ptr<ID3DBlob> errMsgs;
+  DWORD flags = D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR |
+                D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+
+#ifdef _DEBUG
+  flags |= D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_DEBUG;
+#else
+  flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+
+  HRESULT hr =
+      D3DCompile(hlsl, strlen(hlsl), nullptr, nullptr, nullptr, entrypoint,
+                 shaderTarget, flags, 0, compiled.put(), errMsgs.put());
+  if (FAILED(hr)) {
+    std::string errMsg((const char *)errMsgs->GetBufferPointer(),
+                       errMsgs->GetBufferSize());
+    DEBUG_PRINT("D3DCompile failed %X: %s", hr, errMsg.c_str());
+    CHECK_HRESULT(hr, "D3DCompile failed");
+  }
+
+  return compiled;
+}
+
 CubeGraphics::CubeGraphics(winrt::com_ptr<ID3D11Device> device)
     : m_device(device) {
   m_device->GetImmediateContext(m_deviceContext.put());
@@ -114,13 +138,13 @@ void CubeGraphics::InitializeD3DResources() {
   // vs ps layout
   {
     const winrt::com_ptr<ID3DBlob> vertexShaderBytes =
-        dx::CompileShader(CubeShader::ShaderHlsl, "MainVS", "vs_5_0");
+        CompileShader(CubeShader::ShaderHlsl, "MainVS", "vs_5_0");
     CHECK_HRCMD(m_device->CreateVertexShader(
         vertexShaderBytes->GetBufferPointer(),
         vertexShaderBytes->GetBufferSize(), nullptr, m_vertexShader.put()));
 
     const winrt::com_ptr<ID3DBlob> pixelShaderBytes =
-        dx::CompileShader(CubeShader::ShaderHlsl, "MainPS", "ps_5_0");
+        CompileShader(CubeShader::ShaderHlsl, "MainPS", "ps_5_0");
     CHECK_HRCMD(m_device->CreatePixelShader(
         pixelShaderBytes->GetBufferPointer(), pixelShaderBytes->GetBufferSize(),
         nullptr, m_pixelShader.put()));
