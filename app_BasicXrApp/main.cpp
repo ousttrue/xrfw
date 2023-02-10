@@ -32,10 +32,10 @@ struct Context {
       context->instances.push_back({});
       cube.StoreMatrix(&context->instances.back());
     }
-    context->graphics.RenderView(xrfwCastTextureD3D11(swapchainImage),
-                                 (DXGI_FORMAT)info.format, info.width,
-                                 info.height, projection, view, rightProjection,
-                                 rightView, context->instances);
+    context->graphics.SetRTV(xrfwCastTextureD3D11(swapchainImage), info.width,
+                             info.height, (DXGI_FORMAT)info.format);
+    context->graphics.RenderView(projection, view, rightProjection, rightView,
+                                 context->instances);
   }
 };
 
@@ -51,6 +51,7 @@ int main(int argc, char **argv) {
     return 2;
   }
 
+  // cubes
   Context context{
       .graphics = sample::CubeGraphics(device),
   };

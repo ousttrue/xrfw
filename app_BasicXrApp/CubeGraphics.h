@@ -24,9 +24,11 @@ public:
   CubeGraphics(winrt::com_ptr<ID3D11Device> device);
   CubeGraphics(const CubeGraphics &) = delete;
   CubeGraphics &operator=(const CubeGraphics &) = delete;
-  void RenderView(ID3D11Texture2D *colorTexture,
-                  DXGI_FORMAT colorSwapchainFormat, int width, int height,
-                  const float projection[16], const float view[16],
+
+  void SetRTV(ID3D11Texture2D *colorTexture, int width, int height,
+              DXGI_FORMAT colorSwapchainFormat);
+
+  void RenderView(const float projection[16], const float view[16],
                   const float rightProjection[16], const float rightView[16],
                   std::span<DirectX::XMFLOAT4X4> cubes);
 
