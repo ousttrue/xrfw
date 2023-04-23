@@ -1,4 +1,4 @@
-#include <cuber/DxCubeStereoRenderer.h>
+#include <cuber/dx/DxCubeStereoRenderer.h>
 #include <plog/Log.h>
 #include <xrfw.h>
 #include <xrfw_impl_win32_d3d11.h>
@@ -19,7 +19,7 @@ struct Context {
   winrt::com_ptr<ID3D11Device> m_device;
   winrt::com_ptr<ID3D11DeviceContext> m_deviceContext;
 
-  cuber::DxCubeStereoRenderer graphics;
+  cuber::dx11::DxCubeStereoRenderer graphics;
   std::vector<Cube> visible_cubes;
   std::vector<DirectX::XMFLOAT4X4> instances;
 

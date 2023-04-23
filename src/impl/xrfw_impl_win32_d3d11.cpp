@@ -35,7 +35,7 @@ static winrt::com_ptr<IDXGIAdapter1> GetAdapter(LUID adapterId) {
     }
     if (memcmp(&adapterDesc.AdapterLuid, &adapterId, sizeof(adapterId)) == 0) {
       PLOG_DEBUG << "Using graphics adapter "
-                 << std::wstring_view(adapterDesc.Description);
+                 << std::wstring(adapterDesc.Description);
       return dxgiAdapter;
     }
   }

@@ -4,4 +4,4 @@ revision = master
 depth = 1
 
 [provide]
-cuber_dx = cuber_dx_dep
+cuber = cuber_dep
