@@ -1,140 +1,8 @@
+#include "xr_ext_hand_tracking.h"
 #include <cuber/dx/DxCubeStereoRenderer.h>
 #include <plog/Log.h>
 #include <xrfw.h>
 #include <xrfw_impl_win32_d3d11.h>
-
-struct ExtHandTracking
-{
-  static std::span<const char*> extensions()
-  {
-    static const char* s_extensions[] = {
-      XR_EXT_HAND_TRACKING_EXTENSION_NAME,
-    };
-    return s_extensions;
-  }
-  PFN_xrCreateHandTrackerEXT xrCreateHandTrackerEXT_ = nullptr;
-  PFN_xrDestroyHandTrackerEXT xrDestroyHandTrackerEXT_ = nullptr;
-  PFN_xrLocateHandJointsEXT xrLocateHandJointsEXT_ = nullptr;
-  ExtHandTracking(XrInstance instance, XrSystemId system)
-  {
-    // Inspect hand tracking system properties
-    XrSystemHandTrackingPropertiesEXT handTrackingSystemProperties{
-      XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT
-    };
-    XrSystemProperties systemProperties{ XR_TYPE_SYSTEM_PROPERTIES,
-                                         &handTrackingSystemProperties };
-    if (FAILED(xrGetSystemProperties(instance, system, &systemProperties))) {
-      PLOG_ERROR << "xrGetSystemProperties";
-    }
-    if (!handTrackingSystemProperties.supportsHandTracking) {
-      // The system does not support hand tracking
-      PLOG_ERROR << "xrGetSystemProperties "
-                    "XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT FAILED.";
-    } else {
-      PLOG_INFO << "xrGetSystemProperties "
-                   "XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT OK "
-                   "- initiallizing hand tracking...";
-    }
-
-    if (FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrCreateHandTrackerEXT",
-          (PFN_xrVoidFunction*)(&xrCreateHandTrackerEXT_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrCreateHandTrackerEXT";
-    }
-    if (FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrDestroyHandTrackerEXT",
-          (PFN_xrVoidFunction*)(&xrDestroyHandTrackerEXT_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrDestroyHandTrackerEXT_";
-    }
-    if (FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrLocateHandJointsEXT",
-          (PFN_xrVoidFunction*)(&xrLocateHandJointsEXT_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrLocateHandJointsEXT_";
-    }
-  }
-};
-
-struct ExtHandTracker
-{
-  const ExtHandTracking& m_ext;
-  XrHandTrackerEXT handTrackerL_ = XR_NULL_HANDLE;
-  XrHandJointLocationEXT jointLocationsL_[XR_HAND_JOINT_COUNT_EXT];
-  XrHandJointLocationsEXT locationsL_ = {};
-  DirectX::XMFLOAT4 m_color;
-
-  ExtHandTracker(const ExtHandTracking& ext, XrSession session, bool isLeft)
-    : m_ext(ext)
-  {
-    XrHandTrackerCreateInfoEXT createInfo{
-      .type = XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT,
-      .hand = isLeft ? XR_HAND_LEFT_EXT : XR_HAND_RIGHT_EXT,
-      .handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT,
-    };
-    if (FAILED(m_ext.xrCreateHandTrackerEXT_(
-          session, &createInfo, &handTrackerL_))) {
-      PLOG_ERROR << "xrCreateHandTrackerEXT";
-    }
-    if (isLeft) {
-      m_color = { 1, 0, 0, 1 };
-    } else {
-      m_color = { 0, 0, 1, 1 };
-    }
-  }
-
-  ~ExtHandTracker()
-  {
-    if (FAILED(m_ext.xrDestroyHandTrackerEXT_(handTrackerL_))) {
-      PLOG_ERROR << "xrDestroyHandTrackerEXT_";
-    }
-  }
-
-  void Update(XrTime time,
-              XrSpace space,
-              std::vector<cuber::Instance>& instances)
-  {
-    locationsL_ = XrHandJointLocationsEXT{
-      .type = XR_TYPE_HAND_JOINT_LOCATIONS_EXT,
-      .next = nullptr,
-      .jointCount = XR_HAND_JOINT_COUNT_EXT,
-      .jointLocations = jointLocationsL_,
-    };
-
-    XrHandJointsLocateInfoEXT locateInfoL{
-      .type = XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT,
-      .baseSpace = space,
-      .time = time,
-    };
-    if (FAILED(m_ext.xrLocateHandJointsEXT_(
-          handTrackerL_, &locateInfoL, &locationsL_))) {
-      PLOG_ERROR << "xrLocateHandJointsEXT";
-      return;
-    }
-
-    // Tracked joints and computed joints can all be valid
-    const XrSpaceLocationFlags isValid =
-      XR_SPACE_LOCATION_ORIENTATION_VALID_BIT |
-      XR_SPACE_LOCATION_POSITION_VALID_BIT;
-
-    if (locationsL_.isActive) {
-      for (int i = 0; i < XR_HAND_JOINT_COUNT_EXT; ++i) {
-        if ((jointLocationsL_[i].locationFlags & isValid) != 0) {
-          instances.push_back({});
-          auto size = jointLocationsL_[i].radius * 2;
-          auto s = DirectX::XMMatrixScaling(size, size, size);
-          auto r = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(
-            (const DirectX::XMFLOAT4*)&jointLocationsL_[i].pose.orientation));
-          auto t = DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(
-            (const DirectX::XMFLOAT3*)&jointLocationsL_[i].pose.position));
-          DirectX::XMStoreFloat4x4(&instances.back().Matrix, s * r * t);
-          instances.back().Color = m_color;
-        }
-      }
-    }
-  }
-};
 
 struct Context
 {
@@ -145,8 +13,8 @@ struct Context
   winrt::com_ptr<ID3D11DeviceContext> m_deviceContext;
   winrt::com_ptr<ID3D11Texture2D> m_depthStencil;
   winrt::com_ptr<ID3D11DepthStencilView> m_dsv;
-  cuber::dx11::DxCubeStereoRenderer graphics;
-  std::vector<cuber::Instance> instances;
+  cuber::dx11::DxCubeStereoRenderer m_cuber;
+  std::vector<cuber::Instance> m_instances;
 
   ExtHandTracking m_ext;
   std::shared_ptr<ExtHandTracker> m_trackerL;
@@ -156,7 +24,7 @@ struct Context
           XrSystemId system,
           const winrt::com_ptr<ID3D11Device>& device)
     : m_device(device)
-    , graphics(device)
+    , m_cuber(device)
     , m_ext(instance, system)
   {
     m_device->GetImmediateContext(m_deviceContext.put());
@@ -249,31 +117,54 @@ struct Context
       (UINT)std::size(renderTargets), renderTargets, m_dsv.get());
   }
 
+  void UpdateJoints(std::span<const XrHandJointLocationEXT> joints,
+                    const DirectX::XMFLOAT4& color)
+  {
+    const XrSpaceLocationFlags isValid =
+      XR_SPACE_LOCATION_ORIENTATION_VALID_BIT |
+      XR_SPACE_LOCATION_POSITION_VALID_BIT;
+
+    for (auto& joint : joints) {
+      if ((joint.locationFlags & isValid) != 0) {
+        auto size = joint.radius * 2;
+        auto s = DirectX::XMMatrixScaling(size, size, size);
+        auto r = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(
+          (const DirectX::XMFLOAT4*)&joint.pose.orientation));
+        auto t = DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(
+          (const DirectX::XMFLOAT3*)&joint.pose.position));
+
+        m_instances.push_back({});
+        DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
+        m_instances.back().Color = color;
+      }
+    }
+  }
+
   void Render(XrTime time,
               const XrSwapchainImageBaseHeader* swapchainImage,
               const XrfwSwapchains& info,
-              const float projection[16],
-              const float view[16],
+              const float leftProjection[16],
+              const float leftView[16],
               const float rightProjection[16],
               const float rightView[16])
   {
     // update
-    instances.clear();
+    m_instances.clear();
     auto space = xrfwAppSpace();
-    m_trackerL->Update(time, space, instances);
-    m_trackerR->Update(time, space, instances);
+    UpdateJoints(m_trackerL->Update(time, space), { 1, 0, 0, 1 });
+    UpdateJoints(m_trackerR->Update(time, space), { 0, 0, 1, 1 });
 
     // render
     SetRTV(xrfwCastTextureD3D11(swapchainImage),
            info.width,
            info.height,
            (DXGI_FORMAT)info.format);
-    graphics.Render(projection,
-                    view,
-                    rightProjection,
-                    rightView,
-                    instances.data(),
-                    instances.size());
+    m_cuber.Render(leftProjection,
+                   leftView,
+                   rightProjection,
+                   rightView,
+                   m_instances.data(),
+                   m_instances.size());
   }
 
   static void Render(XrTime time,
