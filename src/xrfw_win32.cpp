@@ -91,8 +91,8 @@ selectColorSwapchainFormatWin32OpenGL(std::span<int64_t> swapchainFormats) {
 
 XRFW_API void xrfwInitExtensionsWin32OpenGL(
     XrGraphicsRequirementsOpenGLKHR *graphicsRequirements) {
-  g_init.extensionNames = opengl_extensions;
-  g_init.extensionCount = _countof(opengl_extensions);
+  g_init.extensionNames.assign(opengl_extensions,
+                               opengl_extensions + _countof(opengl_extensions));
   g_init.graphicsRequirements = graphicsRequirements;
   g_init.graphicsRequirementsCallback = &graphicsRequirementsWin32OpenGL;
   g_init.selectColorSwapchainFormatCallback =
@@ -193,8 +193,8 @@ selectColorSwapchainFormatD3D11(std::span<int64_t> swapchainFormats) {
 
 XRFW_API void xrfwInitExtensionsWin32D3D11(
     XrGraphicsRequirementsD3D11KHR *graphicsRequirements) {
-  g_init.extensionNames = d3d11_extensions;
-  g_init.extensionCount = _countof(d3d11_extensions);
+  g_init.extensionNames.assign(d3d11_extensions,
+                               d3d11_extensions + _countof(d3d11_extensions));
   g_init.graphicsRequirements = graphicsRequirements;
   g_init.graphicsRequirementsCallback = &graphicsRequirementsWin32D3D11;
   g_init.selectColorSwapchainFormatCallback = &selectColorSwapchainFormatD3D11;

@@ -17,8 +17,9 @@
 
 #include <xrfw.h>
 
-struct TurnTable {
-  glm::vec3 shift = {0, 0, -5};
+struct TurnTable
+{
+  glm::vec3 shift = { 0, 0, -5 };
   float yaw = 0;
   float pitch = 0;
   float fovY = static_cast<float>(30.0 / 180 * std::numbers::pi);
@@ -32,20 +33,21 @@ struct TurnTable {
   int mouse_x = 0;
   int mouse_y = 0;
 
-  void update() {
-    *((glm::mat4 *)projection) =
-        glm::perspectiveFovRH_ZO(fovY, static_cast<float>(width),
-                                 static_cast<float>(height), zNear, zFar);
+  void update()
+  {
+    *((glm::mat4*)projection) = glm::perspectiveFovRH_ZO(
+      fovY, static_cast<float>(width), static_cast<float>(height), zNear, zFar);
 
     auto t = glm::translate(glm::mat4(1), shift);
-    auto r = glm::angleAxis(yaw, glm::vec3{0, 1, 0}) *
-             glm::angleAxis(pitch, glm::vec3{1, 0, 0});
-    *((glm::mat4 *)view) = t * glm::toMat4(r);
+    auto r = glm::angleAxis(yaw, glm::vec3{ 0, 1, 0 }) *
+             glm::angleAxis(pitch, glm::vec3{ 1, 0, 0 });
+    *((glm::mat4*)view) = t * glm::toMat4(r);
   }
 
   void rightMousePress() { isRightDown = true; }
   void rightMouseRelease() { isRightDown = false; }
-  void cursor(int x, int y) {
+  void cursor(int x, int y)
+  {
     auto dx = x - mouse_x;
     auto dy = y - mouse_y;
     mouse_x = x;
@@ -59,42 +61,49 @@ struct TurnTable {
   }
 };
 
-static void cursor_position_callback(GLFWwindow *window, double xpos,
-                                     double ypos) {
-  auto camera = (TurnTable *)glfwGetWindowUserPointer(window);
-  camera->cursor(xpos, ypos);
+static void
+cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+  auto camera = (TurnTable*)glfwGetWindowUserPointer(window);
+  camera->cursor(static_cast<int>(xpos), static_cast<int>(ypos));
 }
-void mouse_button_callback(GLFWwindow *window, int button, int action,
-                           int mods) {
-  auto camera = (TurnTable *)glfwGetWindowUserPointer(window);
+void
+mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+  auto camera = (TurnTable*)glfwGetWindowUserPointer(window);
   if (button == GLFW_MOUSE_BUTTON_RIGHT) {
     switch (action) {
-    case GLFW_PRESS:
-      camera->rightMousePress();
-      break;
+      case GLFW_PRESS:
+        camera->rightMousePress();
+        break;
 
-    case GLFW_RELEASE:
-      camera->rightMouseRelease();
-      break;
+      case GLFW_RELEASE:
+        camera->rightMouseRelease();
+        break;
     }
   }
 }
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
-  auto camera = (TurnTable *)glfwGetWindowUserPointer(window);
+void
+framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+  auto camera = (TurnTable*)glfwGetWindowUserPointer(window);
   camera->width = width;
   camera->height = height;
   camera->update();
 }
 
-struct PlatformWin32OpenGLImpl {
-  GLFWwindow *window_ = nullptr;
+struct PlatformWin32OpenGLImpl
+{
+  GLFWwindow* window_ = nullptr;
   XrGraphicsRequirementsOpenGLKHR graphicsRequired = {
-      .type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR,
+    .type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR,
   };
   TurnTable camera;
+  XrSession session_ = XR_NULL_HANDLE;
 
-  PlatformWin32OpenGLImpl() {
+  PlatformWin32OpenGLImpl()
+  {
     if (!glfwInit()) {
       PLOG_FATAL << "glfwInit";
       throw std::runtime_error("glfwInit");
@@ -102,7 +111,8 @@ struct PlatformWin32OpenGLImpl {
   }
   ~PlatformWin32OpenGLImpl() { glfwTerminate(); }
 
-  bool InitializeGraphics() {
+  bool InitializeGraphics()
+  {
     // Create a windowed mode window and its OpenGL context
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -126,13 +136,16 @@ struct PlatformWin32OpenGLImpl {
     return true;
   }
 
-  XrSession CreateSession(XrfwSwapchains *swapchains) {
-    return xrfwCreateSessionWin32OpenGL(swapchains,
-                                        GetDC(glfwGetWin32Window(window_)),
-                                        glfwGetWGLContext(window_));
+  XrSession CreateSession(XrfwSwapchains* swapchains)
+  {
+    return session_ =
+             xrfwCreateSessionWin32OpenGL(swapchains,
+                                          GetDC(glfwGetWin32Window(window_)),
+                                          glfwGetWGLContext(window_));
   }
 
-  bool BeginFrame() {
+  bool BeginFrame()
+  {
     if (glfwWindowShouldClose(window_)) {
       return false;
     }
@@ -140,43 +153,66 @@ struct PlatformWin32OpenGLImpl {
     return true;
   }
 
-  void EndFrame(RenderFunc render, void *user) {
+  void EndFrame(RenderFunc render, void* user)
+  {
     XrfwSwapchains info{
-        .format = 0,
-        .width = camera.width,
-        .height = camera.height,
+      .format = 0,
+      .width = camera.width,
+      .height = camera.height,
     };
-    render(0, 0, info, camera.projection, camera.view, nullptr, nullptr, user);
+    render(
+      {}, 0, 0, info, camera.projection, camera.view, nullptr, nullptr, user);
     glfwSwapBuffers(window_);
   }
 };
 
-XrfwPlatformWin32OpenGL::XrfwPlatformWin32OpenGL(struct android_app *)
-    : impl_(new PlatformWin32OpenGLImpl) {}
-XrfwPlatformWin32OpenGL::~XrfwPlatformWin32OpenGL() { delete impl_; }
-XrInstance XrfwPlatformWin32OpenGL::CreateInstance() {
+XrfwPlatformWin32OpenGL::XrfwPlatformWin32OpenGL(struct android_app*)
+  : impl_(new PlatformWin32OpenGLImpl)
+{
+}
+XrfwPlatformWin32OpenGL::~XrfwPlatformWin32OpenGL()
+{
+  delete impl_;
+}
+XrInstance
+XrfwPlatformWin32OpenGL::CreateInstance()
+{
   xrfwInitExtensionsWin32OpenGL(&impl_->graphicsRequired);
   return xrfwCreateInstance();
 }
-bool XrfwPlatformWin32OpenGL::InitializeGraphics() {
+bool
+XrfwPlatformWin32OpenGL::InitializeGraphics()
+{
   return impl_->InitializeGraphics();
 }
-XrSession XrfwPlatformWin32OpenGL::CreateSession(XrfwSwapchains *swapchains) {
+XrSession
+XrfwPlatformWin32OpenGL::CreateSession(XrfwSwapchains* swapchains)
+{
   return impl_->CreateSession(swapchains);
 }
-bool XrfwPlatformWin32OpenGL::BeginFrame() { return impl_->BeginFrame(); }
-void XrfwPlatformWin32OpenGL::EndFrame(RenderFunc render, void *user) {
+bool
+XrfwPlatformWin32OpenGL::BeginFrame()
+{
+  return impl_->BeginFrame();
+}
+void
+XrfwPlatformWin32OpenGL::EndFrame(RenderFunc render, void* user)
+{
   impl_->EndFrame(render, user);
 }
-uint32_t XrfwPlatformWin32OpenGL::CastTexture(
-    const XrSwapchainImageBaseHeader *swapchainImage) {
+uint32_t
+XrfwPlatformWin32OpenGL::CastTexture(
+  const XrSwapchainImageBaseHeader* swapchainImage)
+{
   if (!swapchainImage) {
     return {};
   }
-  return reinterpret_cast<const XrSwapchainImageOpenGLKHR *>(swapchainImage)
-      ->image;
+  return reinterpret_cast<const XrSwapchainImageOpenGLKHR*>(swapchainImage)
+    ->image;
 }
-void XrfwPlatformWin32OpenGL::Sleep(std::chrono::milliseconds ms) {
+void
+XrfwPlatformWin32OpenGL::Sleep(std::chrono::milliseconds ms)
+{
   ::Sleep((uint32_t)ms.count());
 }
 #endif

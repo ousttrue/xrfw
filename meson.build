@@ -46,6 +46,8 @@ glew_dep = dependency('glew',
     default_options:['default_library=static'],
 )
 glm_dep = dependency('glm')
+cuber_dep = dependency('cuber')
+directxmath_dep = dependency('directxmath')
 
 if get_option('impl_opengl')
     xrfw_impl_opengl_deps = [
@@ -93,6 +95,7 @@ if get_option('impl_d3d11')
         compile_args: xrfw_impl_d3d11_args,
     )
     subdir('app_BasicXrApp')
+    subdir('app_ext_hand_tracking')
 endif
 if get_option('tests')
     subdir('tests')

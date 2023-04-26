@@ -21,7 +21,6 @@ struct XrfwInitialization {
       nullptr;
   XrfwAllocateSwapchainImageStructsFunc allocateSwapchainImageStructsCallback =
       nullptr;
-  const char *const *extensionNames = nullptr;
-  uint32_t extensionCount = 0;
+  std::vector<const char *> extensionNames;
   const void *next = nullptr;
 };

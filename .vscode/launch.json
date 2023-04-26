@@ -37,5 +37,16 @@
             "environment": [],
             "console": "integratedTerminal"
         },
+        {
+            "name": "app_ext_hand_tracking",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/prefix/bin/app_ext_hand_tracking.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal"
+        },
     ]
 }

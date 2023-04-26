@@ -1,4 +1,3 @@
-cuber_dep = dependency('cuber')
 executable(
     'BasicXrApp',
     [
