@@ -713,7 +713,7 @@ poseToMatrix(XrMatrix4x4f* view, const XrPosef& pose)
   XrMatrix4x4f_InvertRigidBody(view, &toView);
 }
 
-XRFW_API XrBool32
+XRFW_API XrCompositionLayerBaseHeader*
 xrfwBeginFrame(XrTime* outtime, XrfwViewMatrices* viewMatrix)
 {
   XrFrameWaitInfo frameWaitInfo{ XR_TYPE_FRAME_WAIT_INFO };
@@ -721,7 +721,7 @@ xrfwBeginFrame(XrTime* outtime, XrfwViewMatrices* viewMatrix)
   auto result = xrWaitFrame(g_session, &frameWaitInfo, &frameState);
   if (XR_FAILED(result)) {
     PLOG_FATAL << result;
-    return false;
+    return nullptr;
   }
   g_frameState = frameState;
   *outtime = frameState.predictedDisplayTime;
@@ -737,7 +737,7 @@ xrfwBeginFrame(XrTime* outtime, XrfwViewMatrices* viewMatrix)
   result = xrBeginFrame(g_session, &frameBeginInfo);
   if (XR_FAILED(result)) {
     PLOG_FATAL << result;
-    return false;
+    return nullptr;
   }
 
   XrView views[2]{
@@ -758,11 +758,11 @@ xrfwBeginFrame(XrTime* outtime, XrfwViewMatrices* viewMatrix)
       g_session, &viewLocateInfo, &viewState, 2, &viewCountOutput, views);
     if (XR_FAILED(result)) {
       PLOG_FATAL << "xrLocateViews: " << result;
-      return false;
+      return nullptr;
     }
     if ((viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) == 0 ||
         (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) == 0) {
-      return false; // There is no valid tracking poses for the views.
+      return nullptr; // There is no valid tracking poses for the views.
     }
     assert(viewCountOutput == 2);
 
@@ -798,33 +798,20 @@ xrfwBeginFrame(XrTime* outtime, XrfwViewMatrices* viewMatrix)
     .views = g_projectionViews,
   };
 
-  return shouldRender_;
+  return shouldRender_ ? (XrCompositionLayerBaseHeader*)&g_projection : nullptr;
 }
 
 XRFW_API XrBool32
-xrfwEndFrame()
+xrfwEndFrame(const XrCompositionLayerBaseHeader* const* layers,
+             uint32_t layerCount)
 {
-  XrFrameEndInfo frameEndInfo = {};
-  if (!g_frameState.shouldRender) {
-    // no renderring
-    frameEndInfo = {
-      .type = XR_TYPE_FRAME_END_INFO,
-      .displayTime = g_frameState.predictedDisplayTime,
-      .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-      .layerCount = 0,
-      .layers = nullptr,
-    };
-  } else {
-    const XrCompositionLayerBaseHeader* layers[] = { (
-      const XrCompositionLayerBaseHeader*)&g_projection };
-    frameEndInfo = {
-      .type = XR_TYPE_FRAME_END_INFO,
-      .displayTime = g_frameState.predictedDisplayTime,
-      .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-      .layerCount = 1,
-      .layers = layers,
-    };
-  }
+  XrFrameEndInfo frameEndInfo = {
+    .type = XR_TYPE_FRAME_END_INFO,
+    .displayTime = g_frameState.predictedDisplayTime,
+    .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+    .layerCount = layerCount,
+    .layers = layers,
+  };
 
   auto result = xrEndFrame(g_session, &frameEndInfo);
   if (XR_FAILED(result)) {

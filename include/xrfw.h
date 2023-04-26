@@ -63,10 +63,11 @@ struct XrfwViewMatrices
   float rightProjection[16];
   float rightView[16];
 };
-XRFW_API XrBool32
+XRFW_API XrCompositionLayerBaseHeader*
 xrfwBeginFrame(XrTime* outtime, XrfwViewMatrices* viewMatrix);
 XRFW_API XrBool32
-xrfwEndFrame();
+xrfwEndFrame(const XrCompositionLayerBaseHeader* const* layers,
+             uint32_t layerCount);
 
 #ifdef XR_USE_PLATFORM_WIN32
 #include "xrfw_win32.h"
@@ -101,7 +102,7 @@ xrfwSession(T& platform,
     if (xrfwPollEventsIsSessionActive(begin, end, user)) {
       XrTime frameTime;
       XrfwViewMatrices viewMatrix;
-      if (xrfwBeginFrame(&frameTime, &viewMatrix)) {
+      if (auto projectionLayer = xrfwBeginFrame(&frameTime, &viewMatrix)) {
         if (use_vrpt) {
           if (auto swapchainImage =
                 xrfwAcquireSwapchain(swapchains.leftOrVrpt)) {
@@ -135,8 +136,19 @@ xrfwSession(T& platform,
             xrfwReleaseSwapchain(swapchains.leftOrVrpt);
           }
         }
+        xrfwEndFrame(&projectionLayer, 1);
+        //   const XrCompositionLayerBaseHeader* layers[] = { (
+        //     const XrCompositionLayerBaseHeader*)&g_projection };
+        //   frameEndInfo = {
+        //     .type = XR_TYPE_FRAME_END_INFO,
+        //     .displayTime = g_frameState.predictedDisplayTime,
+        //     .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+        //     .layerCount = layerCount,
+        //     .layers = layers,
+        //   };
+      } else {
+        xrfwEndFrame({}, {});
       }
-      xrfwEndFrame();
     } else {
       // XrSession is not active
       platform.Sleep(std::chrono::milliseconds(30));
