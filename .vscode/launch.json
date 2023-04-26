@@ -48,5 +48,16 @@
             "environment": [],
             "console": "integratedTerminal"
         },
+        {
+            "name": "app_fb_body_tracking",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/prefix/bin/app_fb_body_tracking.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal"
+        },
     ]
 }

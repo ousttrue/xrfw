@@ -1,4 +1,6 @@
-project('xrfw', ['cpp', 'c'],
+project(
+    'xrfw',
+    ['cpp', 'c'],
     version: '0.1.0',
     default_options: ['cpp_std=c++20'],
 )
@@ -15,7 +17,7 @@ if compiler.get_id() == 'msvc'
 endif
 if host_machine.system() == 'windows'
     cpp_args += [
-        '-DXR_USE_PLATFORM_WIN32', 
+        '-DXR_USE_PLATFORM_WIN32',
         '-DXR_USE_GRAPHICS_API_OPENGL',
         '-DXR_USE_GRAPHICS_API_D3D11',
         '-DPLOG_EXPORT',
@@ -24,10 +26,12 @@ else
 endif
 
 xrfw_inc = include_directories('include')
-xrfw_lib = library('xrfw', [
-    'src/xrfw.cpp',
-    'src/xrfw_win32.cpp',
-],
+xrfw_lib = library(
+    'xrfw',
+    [
+        'src/xrfw.cpp',
+        'src/xrfw_win32.cpp',
+    ],
     install: true,
     include_directories: xrfw_inc,
     cpp_args: cpp_args,
@@ -39,11 +43,11 @@ xrfw_dep = declare_dependency(
     dependencies: [plog_dep, openxr_loader_dep],
 )
 
-glfw_dep = dependency('glfw3', 
-    default_options: ['install=true'])
+glfw_dep = dependency('glfw3', default_options: ['install=true'])
 # gl_dep = dependency('opengl')
-glew_dep = dependency('glew', 
-    default_options:['default_library=static'],
+glew_dep = dependency(
+    'glew',
+    default_options: ['default_library=static'],
 )
 glm_dep = dependency('glm')
 cuber_dep = dependency('cuber')
@@ -51,15 +55,20 @@ directxmath_dep = dependency('directxmath')
 
 if get_option('impl_opengl')
     xrfw_impl_opengl_deps = [
-        xrfw_dep, glm_dep, glfw_dep, glew_dep,
+        xrfw_dep,
+        glm_dep,
+        glfw_dep,
+        glew_dep,
     ]
     xrfw_impl_opengl_args = [
         '-DXR_USE_PLATFORM_WIN32',
         '-DXR_USE_GRAPHICS_API_OPENGL',
     ]
-    xrfw_impl_opengl_lib = static_library('xrfw_impl_opengl', [
-        'src/impl/xrfw_impl_win32_opengl.cpp',
-    ],
+    xrfw_impl_opengl_lib = static_library(
+        'xrfw_impl_opengl',
+        [
+            'src/impl/xrfw_impl_win32_opengl.cpp',
+        ],
         cpp_args: xrfw_impl_opengl_args,
         dependencies: xrfw_impl_opengl_deps,
     )
@@ -73,19 +82,19 @@ if get_option('impl_opengl')
     subdir('app_xrfw_sample')
 endif
 if get_option('impl_d3d11')
-    d3d11_dep = compiler.find_library('d3d11', required : false)
-    d3dcompiler_dep = compiler.find_library('d3dcompiler', required : false)
-    dxgi_dep = compiler.find_library('dxgi', required : false)
-    xrfw_impl_d3d11_deps = [
-        xrfw_dep, dxgi_dep, d3d11_dep, d3dcompiler_dep
-    ]
+    d3d11_dep = compiler.find_library('d3d11', required: false)
+    d3dcompiler_dep = compiler.find_library('d3dcompiler', required: false)
+    dxgi_dep = compiler.find_library('dxgi', required: false)
+    xrfw_impl_d3d11_deps = [xrfw_dep, dxgi_dep, d3d11_dep, d3dcompiler_dep]
     xrfw_impl_d3d11_args = [
         '-DXR_USE_PLATFORM_WIN32',
         '-DXR_USE_GRAPHICS_API_D3D11',
     ]
-    xrfw_impl_d3d11_lib = static_library('xrfw_impl_d3d11', [
-        'src/impl/xrfw_impl_win32_d3d11.cpp',
-    ],
+    xrfw_impl_d3d11_lib = static_library(
+        'xrfw_impl_d3d11',
+        [
+            'src/impl/xrfw_impl_win32_d3d11.cpp',
+        ],
         cpp_args: xrfw_impl_d3d11_args,
         dependencies: xrfw_impl_d3d11_deps,
     )
@@ -96,6 +105,7 @@ if get_option('impl_d3d11')
     )
     subdir('app_BasicXrApp')
     subdir('app_ext_hand_tracking')
+    subdir('app_fb_body_tracking')
 endif
 if get_option('tests')
     subdir('tests')

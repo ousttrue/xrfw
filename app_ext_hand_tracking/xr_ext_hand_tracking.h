@@ -63,7 +63,7 @@ struct ExtHandTracking
 struct ExtHandTracker
 {
   const ExtHandTracking& m_ext;
-  XrHandTrackerEXT m_handTracker = XR_NULL_HANDLE;
+  XrHandTrackerEXT m_tracker = XR_NULL_HANDLE;
   XrHandJointLocationEXT m_jointLocations[XR_HAND_JOINT_COUNT_EXT];
   XrHandJointLocationsEXT m_locations = {};
 
@@ -76,14 +76,14 @@ struct ExtHandTracker
       .handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT,
     };
     if (XR_FAILED(m_ext.xrCreateHandTrackerEXT_(
-          session, &createInfo, &m_handTracker))) {
+          session, &createInfo, &m_tracker))) {
       PLOG_ERROR << "xrCreateHandTrackerEXT";
     }
   }
 
   ~ExtHandTracker()
   {
-    if (XR_FAILED(m_ext.xrDestroyHandTrackerEXT_(m_handTracker))) {
+    if (XR_FAILED(m_ext.xrDestroyHandTrackerEXT_(m_tracker))) {
       PLOG_ERROR << "xrDestroyHandTrackerEXT_";
     }
   }
@@ -103,7 +103,7 @@ struct ExtHandTracker
       .time = time,
     };
     if (XR_FAILED(m_ext.xrLocateHandJointsEXT_(
-          m_handTracker, &locateInfo, &m_locations))) {
+          m_tracker, &locateInfo, &m_locations))) {
       PLOG_ERROR << "xrLocateHandJointsEXT";
       return {};
     }

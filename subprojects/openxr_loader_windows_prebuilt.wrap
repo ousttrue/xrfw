@@ -1,8 +1,8 @@
 [wrap-file]
 directory = openxr_loader_windows_prebuilt
-source_url = https://github.com/KhronosGroup/OpenXR-SDK/releases/download/release-1.0.26/OpenXR.Loader.1.0.26.nupkg
-source_filename = OpenXR.Loader.1.0.26.zip
-source_hash = ae874fd20e77abc2de4bc8a75ccc9a1217799a6e81cf76eee6a1cd599de45a93
+source_url = https://github.com/KhronosGroup/OpenXR-SDK/releases/download/release-1.0.27/OpenXR.Loader.1.0.27.nupkg
+source_filename = OpenXR.Loader.1.0.27.zip
+source_hash = d798970e62c65cbc61c7eea4029ccf507ae7b53b17294bf943d08c4f258e3206
 patch_directory = openxr_loader_windows_prebuilt
 lead_directory_missing = true
 
