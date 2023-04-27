@@ -4,7 +4,6 @@
 #include <plog/Log.h>
 #include <xrfw.h>
 #include <xrfw_impl_win32_d3d11.h>
-#include <xrfw_proc.h>
 
 struct Context
 {
