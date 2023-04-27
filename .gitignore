@@ -8,6 +8,8 @@
 !/subprojects/glm.wrap
 !/subprojects/openxr_loader_windows_prebuilt.wrap
 !/subprojects/plog.wrap
+!/subprojects/libvrm.wrap
+!/subprojects/asio.wrap
 
 /builddir/
 /prefix/

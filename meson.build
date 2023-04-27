@@ -103,6 +103,8 @@ if get_option('impl_d3d11')
         dependencies: xrfw_impl_d3d11_deps,
         compile_args: xrfw_impl_d3d11_args,
     )
+    libvrm_dep = dependency('libvrm')
+    asio_dep = dependency('asio')
     subdir('app_BasicXrApp')
     subdir('app_ext_hand_tracking')
     subdir('app_fb_body_tracking')

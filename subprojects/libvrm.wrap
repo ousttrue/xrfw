@@ -1,0 +1,8 @@
+[wrap-git]
+url = git@github.com:ousttrue/VrmEditor.git
+revision = master
+depth = 1
+; patch_directory = 
+
+[provide]
+libvrm = libvrm_dep

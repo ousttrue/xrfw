@@ -37,7 +37,7 @@ struct FbBodyTracker
   XrBodyJointLocationFB m_jointLocations[XR_BODY_JOINT_COUNT_FB];
   XrBodyJointLocationsFB m_locations = {};
 
-  uint32_t m_skeletonChangeCount = 0;
+  uint32_t m_skeletonChangeCount = -1;
   XrBodySkeletonJointFB m_skeletonJoints[XR_BODY_JOINT_COUNT_FB];
 
   FbBodyTracker(const FbBodyTracking& ext, XrSession session)
