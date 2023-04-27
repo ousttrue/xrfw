@@ -6,6 +6,27 @@
 #include <span>
 #include <vector>
 
+// https://ctrpeach.io/posts/cpp20-string-literal-template-parameters/
+template<size_t N>
+struct XrFwStringLiteral
+{
+  constexpr XrFwStringLiteral(const char (&str)[N]) { std::copy_n(str, N, value); }
+  char value[N];
+};
+
+template<typename PFN, XrFwStringLiteral NAME>
+struct XrFwInstanceProc
+{
+  PFN Proc = nullptr;
+  XrFwInstanceProc(XrInstance instance)
+  {
+    if (XR_FAILED(xrGetInstanceProcAddr(
+          instance, NAME.value, (PFN_xrVoidFunction*)&Proc))) {
+      PLOG_ERROR << "xrGetInstanceProcAddr: " << NAME.value;
+    }
+  }
+};
+
 struct FbBodyTracking
 {
   static std::span<const char*> extensions()
@@ -15,17 +36,21 @@ struct FbBodyTracking
     };
     return s_extensions;
   }
-  PFN_xrCreateBodyTrackerFB xrCreateBodyTrackerFB_ = nullptr;
+  XrFwInstanceProc<PFN_xrCreateBodyTrackerFB, "xrCreateBodyTrackerFB">
+    xrCreateBodyTrackerFB;
   PFN_xrDestroyBodyTrackerFB xrDestroyBodyTrackerFB_ = nullptr;
   PFN_xrLocateBodyJointsFB xrLocateBodyJointsFB_ = nullptr;
+  // PFN_xrGetBodySkeletonFB xrGetSkeletonFB_ = nullptr;
+
   FbBodyTracking(XrInstance instance, XrSystemId system)
+    : xrCreateBodyTrackerFB(instance)
   {
-    if (XR_FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrCreateBodyTrackerFB",
-          (PFN_xrVoidFunction*)(&xrCreateBodyTrackerFB_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrCreateBodyTrackerFB";
-    }
+    // if (XR_FAILED(xrGetInstanceProcAddr(
+    //       instance,
+    //       "xrCreateBodyTrackerFB",
+    //       (PFN_xrVoidFunction*)(&xrCreateBodyTrackerFB_)))) {
+    //   PLOG_ERROR << "xrGetInstanceProcAddr: xrCreateBodyTrackerFB";
+    // }
     if (XR_FAILED(xrGetInstanceProcAddr(
           instance,
           "xrDestroyBodyTrackerFB",
@@ -48,6 +73,9 @@ struct FbBodyTracker
   XrBodyJointLocationFB m_jointLocations[XR_BODY_JOINT_COUNT_FB];
   XrBodyJointLocationsFB m_locations = {};
 
+  uint32_t m_skeletonChangeCount = 0;
+  XrBodySkeletonJointFB m_skeletonJoints[XR_BODY_JOINT_COUNT_FB];
+
   FbBodyTracker(const FbBodyTracking& ext, XrSession session)
     : m_ext(ext)
   {
@@ -56,7 +84,7 @@ struct FbBodyTracker
       .bodyJointSet = XR_BODY_JOINT_SET_DEFAULT_FB,
     };
     if (XR_FAILED(
-          m_ext.xrCreateBodyTrackerFB_(session, &createInfo, &m_tracker))) {
+          m_ext.xrCreateBodyTrackerFB.Proc(session, &createInfo, &m_tracker))) {
       PLOG_ERROR << "xrCreateBodyTrackerFB_";
     }
   }
@@ -91,6 +119,22 @@ struct FbBodyTracker
     if (!m_locations.isActive) {
       return {};
     }
+
+    // if (m_locations.skeletonChangedCount != skeletonChangeCount_) {
+    //   m_skeletonChangeCount = m_locations.skeletonChangedCount;
+    //
+    //   // retrieve the updated skeleton
+    //   XrBodySkeletonFB skeleton{
+    //     .type = XR_TYPE_BODY_SKELETON_FB,
+    //     .next = nullptr,
+    //     .jointCount = XR_BODY_JOINT_COUNT_FB,
+    //     .joints = m_skeletonJoints,
+    //   };
+    //
+    //   if (XR_FAILED(m_ext.xrGetSkeletonFB_(m_bodyTracker, &skeleton))) {
+    //     PLOG_ERROR << "xrGetSkeletonFB_";
+    //   }
+    // }
 
     return std::span{ m_jointLocations, XR_BODY_JOINT_COUNT_FB };
   }
