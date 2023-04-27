@@ -108,6 +108,7 @@ if get_option('impl_d3d11')
     subdir('app_BasicXrApp')
     subdir('app_ext_hand_tracking')
     subdir('app_fb_body_tracking')
+    subdir('app_passthrough')
 endif
 if get_option('tests')
     subdir('tests')

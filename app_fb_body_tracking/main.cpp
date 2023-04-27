@@ -286,19 +286,21 @@ struct Context
                  m_instances);
   }
 
-  static void Render(XrTime time,
-                     const XrSwapchainImageBaseHeader* swapchainImage,
-                     const XrSwapchainImageBaseHeader*,
-                     const XrfwSwapchains& info,
-                     const float projection[16],
-                     const float view[16],
-                     const float rightProjection[16],
-                     const float rightView[16],
-                     void* user)
+  static const XrCompositionLayerBaseHeader* Render(
+    XrTime time,
+    const XrSwapchainImageBaseHeader* swapchainImage,
+    const XrSwapchainImageBaseHeader*,
+    const XrfwSwapchains& info,
+    const float projection[16],
+    const float view[16],
+    const float rightProjection[16],
+    const float rightView[16],
+    void* user)
   {
     auto context = ((Context*)user);
     context->Render(
       time, swapchainImage, info, projection, view, rightProjection, rightView);
+    return nullptr;
   }
 
   static void Begin(XrSession session, void* user)

@@ -36,7 +36,7 @@ run(T& platform)
                        const float view[16],
                        const float rightProjection[16],
                        const float rightView[16],
-                       void* user) {
+                       void* user) -> const XrCompositionLayerBaseHeader* {
     auto pContext = ((Context*)user);
     pContext->fbo.Begin(pContext->platform.CastTexture(swapchainImage),
                         info.width,
@@ -51,6 +51,7 @@ run(T& platform)
       pContext->drawable->Render(rightProjection, rightView, pContext->cubes);
     }
     pContext->fbo.End();
+    return nullptr;
   };
   return xrfwSession(platform, renderFunc, &context);
 }

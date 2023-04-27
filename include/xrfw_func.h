@@ -11,15 +11,17 @@ struct XrfwSwapchains
 };
 
 using RenderFunc =
-  void (*)(XrTime time,
-           const XrSwapchainImageBaseHeader* leftOrVrptSwapchainImage,
-           const XrSwapchainImageBaseHeader* rightSwapchainImage,
-           const XrfwSwapchains& info,
-           const float projection[16],
-           const float view[16],
-           const float rightProjection[16],
-           const float rightView[16],
-           void* user);
+  const XrCompositionLayerBaseHeader* (*)(XrTime time,
+                                          const XrSwapchainImageBaseHeader*
+                                            leftOrVrptSwapchainImage,
+                                          const XrSwapchainImageBaseHeader*
+                                            rightSwapchainImage,
+                                          const XrfwSwapchains& info,
+                                          const float projection[16],
+                                          const float view[16],
+                                          const float rightProjection[16],
+                                          const float rightView[16],
+                                          void* user);
 
 using SessionBeginFunc = void (*)(XrSession session, void* user);
 

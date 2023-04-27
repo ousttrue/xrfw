@@ -59,5 +59,16 @@
             "environment": [],
             "console": "integratedTerminal"
         },
+        {
+            "name": "app_passthrough",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/prefix/bin/app_passthrough.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal"
+        },
     ]
 }

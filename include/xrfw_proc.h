@@ -21,7 +21,7 @@ struct XrFwInstanceProc
   {
     if (XR_FAILED(xrGetInstanceProcAddr(
           instance, NAME.value, (PFN_xrVoidFunction*)&Proc))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: " << NAME.value;
+      PLOG_ERROR << "xrGetInstanceProcAddr: " << (const char*)NAME.value;
     }
   }
   template<typename... ARGS>

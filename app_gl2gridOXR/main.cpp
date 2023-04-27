@@ -7,7 +7,7 @@
 
 static float g_clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
 
-static void
+static const XrCompositionLayerBaseHeader*
 renderFunc(XrTime time,
            const XrSwapchainImageBaseHeader* swapchainImage,
            const XrSwapchainImageBaseHeader* rightSwapchainImage,
@@ -32,6 +32,7 @@ renderFunc(XrTime time,
     render_gles_scene(info.width, info.height, rightProjection, rightView);
   }
   fbo->End();
+  return nullptr;
 }
 
 template<typename T>

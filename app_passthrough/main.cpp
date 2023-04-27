@@ -1,7 +1,9 @@
+#include "../app_ext_hand_tracking/xr_ext_hand_tracking.h"
 #include <cuber/dx/DxCubeStereoRenderer.h>
 #include <plog/Log.h>
 #include <xrfw.h>
 #include <xrfw_impl_win32_d3d11.h>
+#include <xrfw_proc.h>
 
 struct FBPassthrough
 {
@@ -14,7 +16,7 @@ struct FBPassthrough
     return s_extensions;
   }
   static bool SystemSupportsPassthrough(XrInstance instance,
-                                        XRFormFactor formFactor)
+                                        XrFormFactor formFactor)
   {
     XrSystemPassthroughProperties2FB passthroughSystemProperties{
       XR_TYPE_SYSTEM_PASSTHROUGH_PROPERTIES2_FB
@@ -35,18 +37,14 @@ struct FBPassthrough
            XR_PASSTHROUGH_CAPABILITY_BIT_FB;
   }
 
-  PFN_xrCreatePassthroughFB pfnXrCreatePassthroughFBX = nullptr;
-
+  XRFW_PROC(xrCreatePassthroughFB);
+  XRFW_PROC(xrCreatePassthroughLayerFB);
+  XRFW_PROC(xrPassthroughLayerSetStyleFB);
   FBPassthrough(XrInstance instance, XrSystemId system)
+    : xrCreatePassthroughFB(instance)
+    , xrCreatePassthroughLayerFB(instance)
+    , xrPassthroughLayerSetStyleFB(instance)
   {
-    XrResult result =
-      xrGetInstanceProcAddr(instance,
-                            "xrCreatePassthroughFB",
-                            (PFN_xrVoidFunction*)(&pfnXrCreatePassthroughFBX));
-    if (XR_FAILED(result)) {
-      PLOG_ERROR
-        << "Failed to obtain the function pointer for xrCreatePassthroughFB.";
-    }
   }
 };
 
@@ -54,7 +52,9 @@ struct FBPassthroughFeature
 {
   const FBPassthrough& m_ext;
   XrSession m_session;
-  XrPassthroughFB passthroughFeature = XR_NULL_HANDLE;
+  XrPassthroughFB m_passthroughFeature = XR_NULL_HANDLE;
+  XrPassthroughLayerFB m_passthroughLayer = XR_NULL_HANDLE;
+  XrCompositionLayerPassthroughFB m_passthroughCompLayer = {};
 
   FBPassthroughFeature(const FBPassthrough& ext, XrSession session)
     : m_ext(ext)
@@ -65,8 +65,8 @@ struct FBPassthroughFeature
       .flags = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB,
     };
 
-    XrResult result = m_ext.pfnXrCreatePassthroughFBX(
-      session, &passthroughCreateInfo, &passthroughFeature);
+    XrResult result = m_ext.xrCreatePassthroughFB(
+      session, &passthroughCreateInfo, &m_passthroughFeature);
     if (XR_FAILED(result)) {
       PLOG_ERROR << "Failed to create a passthrough feature.";
     }
@@ -75,19 +75,36 @@ struct FBPassthroughFeature
   void CreateLayer()
   {
     // Create and run passthrough layer
-    XrPassthroughLayerFB passthroughLayer = XR_NULL_HANDLE;
 
     XrPassthroughLayerCreateInfoFB layerCreateInfo = {
       .type = XR_TYPE_PASSTHROUGH_LAYER_CREATE_INFO_FB,
-      .passthrough = passthroughFeature,
+      .passthrough = m_passthroughFeature,
       .flags = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB,
       .purpose = XR_PASSTHROUGH_LAYER_PURPOSE_RECONSTRUCTION_FB,
     };
 
-    XrResult result = m_ext.pfnXrCreatePassthroughLayerFBX(
-      m_session, &layerCreateInfo, &passthroughLayer);
+    XrResult result = m_ext.xrCreatePassthroughLayerFB(
+      m_session, &layerCreateInfo, &m_passthroughLayer);
     if (XR_FAILED(result)) {
       PLOG_ERROR << "Failed to create and start a passthrough layer";
+    }
+
+    m_passthroughCompLayer = {
+      .type = XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB,
+      .flags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT,
+      .space = XR_NULL_HANDLE,
+      .layerHandle = m_passthroughLayer,
+    };
+
+    XrPassthroughStyleFB style{
+      .type = XR_TYPE_PASSTHROUGH_STYLE_FB,
+      .textureOpacityFactor = 0.5f,
+      .edgeColor = { 0.0f, 0.0f, 0.0f, 0.0f },
+      // .next = &colorMap,
+    };
+    if (FAILED(
+          m_ext.xrPassthroughLayerSetStyleFB(m_passthroughLayer, &style))) {
+      PLOG_ERROR << "xrPassthroughLayerSetStyleFB";
     }
   }
 
@@ -101,139 +118,6 @@ struct FBPassthroughFeature
   // }
 };
 
-struct ExtHandTracking
-{
-  static std::span<const char*> extensions()
-  {
-    static const char* s_extensions[] = {
-      XR_EXT_HAND_TRACKING_EXTENSION_NAME,
-    };
-    return s_extensions;
-  }
-  PFN_xrCreateHandTrackerEXT xrCreateHandTrackerEXT_ = nullptr;
-  PFN_xrDestroyHandTrackerEXT xrDestroyHandTrackerEXT_ = nullptr;
-  PFN_xrLocateHandJointsEXT xrLocateHandJointsEXT_ = nullptr;
-  ExtHandTracking(XrInstance instance, XrSystemId system)
-  {
-    // Inspect hand tracking system properties
-    XrSystemHandTrackingPropertiesEXT handTrackingSystemProperties{
-      XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT
-    };
-    XrSystemProperties systemProperties{ XR_TYPE_SYSTEM_PROPERTIES,
-                                         &handTrackingSystemProperties };
-    if (FAILED(xrGetSystemProperties(instance, system, &systemProperties))) {
-      PLOG_ERROR << "xrGetSystemProperties";
-    }
-    if (!handTrackingSystemProperties.supportsHandTracking) {
-      // The system does not support hand tracking
-      PLOG_ERROR << "xrGetSystemProperties "
-                    "XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT FAILED.";
-    } else {
-      PLOG_INFO << "xrGetSystemProperties "
-                   "XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT OK "
-                   "- initiallizing hand tracking...";
-    }
-
-    if (FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrCreateHandTrackerEXT",
-          (PFN_xrVoidFunction*)(&xrCreateHandTrackerEXT_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrCreateHandTrackerEXT";
-    }
-    if (FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrDestroyHandTrackerEXT",
-          (PFN_xrVoidFunction*)(&xrDestroyHandTrackerEXT_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrDestroyHandTrackerEXT_";
-    }
-    if (FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrLocateHandJointsEXT",
-          (PFN_xrVoidFunction*)(&xrLocateHandJointsEXT_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrLocateHandJointsEXT_";
-    }
-  }
-};
-
-struct ExtHandTracker
-{
-  const ExtHandTracking& m_ext;
-  XrHandTrackerEXT handTrackerL_ = XR_NULL_HANDLE;
-  XrHandJointLocationEXT jointLocationsL_[XR_HAND_JOINT_COUNT_EXT];
-  XrHandJointLocationsEXT locationsL_ = {};
-  DirectX::XMFLOAT4 m_color;
-
-  ExtHandTracker(const ExtHandTracking& ext, XrSession session, bool isLeft)
-    : m_ext(ext)
-  {
-    XrHandTrackerCreateInfoEXT createInfo{
-      .type = XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT,
-      .hand = isLeft ? XR_HAND_LEFT_EXT : XR_HAND_RIGHT_EXT,
-      .handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT,
-    };
-    if (FAILED(m_ext.xrCreateHandTrackerEXT_(
-          session, &createInfo, &handTrackerL_))) {
-      PLOG_ERROR << "xrCreateHandTrackerEXT";
-    }
-    if (isLeft) {
-      m_color = { 1, 0, 0, 1 };
-    } else {
-      m_color = { 0, 0, 1, 1 };
-    }
-  }
-
-  ~ExtHandTracker()
-  {
-    if (FAILED(m_ext.xrDestroyHandTrackerEXT_(handTrackerL_))) {
-      PLOG_ERROR << "xrDestroyHandTrackerEXT_";
-    }
-  }
-
-  void Update(XrTime time,
-              XrSpace space,
-              std::vector<cuber::Instance>& instances)
-  {
-    locationsL_ = XrHandJointLocationsEXT{
-      .type = XR_TYPE_HAND_JOINT_LOCATIONS_EXT,
-      .next = nullptr,
-      .jointCount = XR_HAND_JOINT_COUNT_EXT,
-      .jointLocations = jointLocationsL_,
-    };
-
-    XrHandJointsLocateInfoEXT locateInfoL{
-      .type = XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT,
-      .baseSpace = space,
-      .time = time,
-    };
-    if (FAILED(m_ext.xrLocateHandJointsEXT_(
-          handTrackerL_, &locateInfoL, &locationsL_))) {
-      PLOG_ERROR << "xrLocateHandJointsEXT";
-      return;
-    }
-
-    // Tracked joints and computed joints can all be valid
-    const XrSpaceLocationFlags isValid =
-      XR_SPACE_LOCATION_ORIENTATION_VALID_BIT |
-      XR_SPACE_LOCATION_POSITION_VALID_BIT;
-
-    if (locationsL_.isActive) {
-      for (int i = 0; i < XR_HAND_JOINT_COUNT_EXT; ++i) {
-        if ((jointLocationsL_[i].locationFlags & isValid) != 0) {
-          instances.push_back({});
-          auto size = jointLocationsL_[i].radius * 2;
-          auto s = DirectX::XMMatrixScaling(size, size, size);
-          auto r = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(
-            (const DirectX::XMFLOAT4*)&jointLocationsL_[i].pose.orientation));
-          auto t = DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(
-            (const DirectX::XMFLOAT3*)&jointLocationsL_[i].pose.position));
-          DirectX::XMStoreFloat4x4(&instances.back().Matrix, s * r * t);
-          instances.back().Color = m_color;
-        }
-      }
-    }
-  }
-};
-
 struct Context
 {
   static const int MAX_NUM_EYES = 2;
@@ -244,11 +128,13 @@ struct Context
   winrt::com_ptr<ID3D11Texture2D> m_depthStencil;
   winrt::com_ptr<ID3D11DepthStencilView> m_dsv;
   cuber::dx11::DxCubeStereoRenderer graphics;
-  std::vector<cuber::Instance> instances;
+  std::vector<cuber::Instance> m_instances;
 
   ExtHandTracking m_ext;
   std::shared_ptr<ExtHandTracker> m_trackerL;
   std::shared_ptr<ExtHandTracker> m_trackerR;
+  FBPassthrough m_passthrough;
+  std::shared_ptr<FBPassthroughFeature> m_passthroughFeature;
 
   Context(XrInstance instance,
           XrSystemId system,
@@ -256,6 +142,7 @@ struct Context
     : m_device(device)
     , graphics(device)
     , m_ext(instance, system)
+    , m_passthrough(instance, system)
   {
     m_device->GetImmediateContext(m_deviceContext.put());
   }
@@ -330,10 +217,10 @@ struct Context
     // Clear swapchain and depth buffer. NOTE: This will clear the entire render
     // target view, not just the specified view.
     constexpr DirectX::XMFLOAT4 renderTargetClearColor = {
-      0.184313729f,
-      0.309803933f,
-      0.309803933f,
-      1.000000000f,
+      0.0f,
+      0.0f,
+      0.0f,
+      0.0f,
     };
     m_deviceContext->ClearRenderTargetView(renderTargetView.get(),
                                            &renderTargetClearColor.x);
@@ -356,10 +243,32 @@ struct Context
               const float rightView[16])
   {
     // update
-    instances.clear();
+    m_instances.clear();
     auto space = xrfwAppSpace();
-    m_trackerL->Update(time, space, instances);
-    m_trackerR->Update(time, space, instances);
+    for (auto& joint : m_trackerL->Update(time, space)) {
+      auto size = joint.radius * 2;
+      auto s = DirectX::XMMatrixScaling(size, size, size);
+      auto r = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(
+        (const DirectX::XMFLOAT4*)&joint.pose.orientation));
+      auto t = DirectX::XMMatrixTranslationFromVector(
+        DirectX::XMLoadFloat3((const DirectX::XMFLOAT3*)&joint.pose.position));
+
+      m_instances.push_back({});
+      DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
+      m_instances.back().Color = { 1, 1, 1, 1 };
+    }
+    for (auto& joint : m_trackerR->Update(time, space)) {
+      auto size = joint.radius * 2;
+      auto s = DirectX::XMMatrixScaling(size, size, size);
+      auto r = DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(
+        (const DirectX::XMFLOAT4*)&joint.pose.orientation));
+      auto t = DirectX::XMMatrixTranslationFromVector(
+        DirectX::XMLoadFloat3((const DirectX::XMFLOAT3*)&joint.pose.position));
+
+      m_instances.push_back({});
+      DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
+      m_instances.back().Color = { 1, 1, 1, 1 };
+    }
 
     // render
     SetRTV(xrfwCastTextureD3D11(swapchainImage),
@@ -370,23 +279,27 @@ struct Context
                     view,
                     rightProjection,
                     rightView,
-                    instances.data(),
-                    instances.size());
+                    m_instances.data(),
+                    m_instances.size());
   }
 
-  static void Render(XrTime time,
-                     const XrSwapchainImageBaseHeader* swapchainImage,
-                     const XrSwapchainImageBaseHeader*,
-                     const XrfwSwapchains& info,
-                     const float projection[16],
-                     const float view[16],
-                     const float rightProjection[16],
-                     const float rightView[16],
-                     void* user)
+  static const XrCompositionLayerBaseHeader* Render(
+    XrTime time,
+    const XrSwapchainImageBaseHeader* swapchainImage,
+    const XrSwapchainImageBaseHeader*,
+    const XrfwSwapchains& info,
+    const float projection[16],
+    const float view[16],
+    const float rightProjection[16],
+    const float rightView[16],
+    void* user)
   {
     auto context = ((Context*)user);
     context->Render(
       time, swapchainImage, info, projection, view, rightProjection, rightView);
+
+    return (const XrCompositionLayerBaseHeader*)&context->m_passthroughFeature
+      ->m_passthroughCompLayer;
   }
 
   static void Begin(XrSession session, void* user)
@@ -396,6 +309,9 @@ struct Context
       std::make_shared<ExtHandTracker>(context->m_ext, session, true);
     context->m_trackerR =
       std::make_shared<ExtHandTracker>(context->m_ext, session, false);
+    context->m_passthroughFeature =
+      std::make_shared<FBPassthroughFeature>(context->m_passthrough, session);
+    context->m_passthroughFeature->CreateLayer();
   }
 
   static void End(XrSession session, void* user)
@@ -411,8 +327,15 @@ main(int argc, char** argv)
 {
   // instance
   XrfwPlatformWin32D3D11 platform;
-  auto [instance, system] =
-    platform.CreateInstance(ExtHandTracking::extensions());
+  std::vector<const char*> extensions;
+  for (auto& extension : ExtHandTracking::extensions()) {
+    extensions.push_back(extension);
+  }
+  for (auto& extension : FBPassthrough::extensions()) {
+    extensions.push_back(extension);
+  }
+
+  auto [instance, system] = platform.CreateInstance(extensions);
   if (!instance) {
     return 1;
   }

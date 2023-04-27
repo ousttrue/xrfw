@@ -63,7 +63,7 @@ struct XrfwViewMatrices
   float rightProjection[16];
   float rightView[16];
 };
-XRFW_API XrCompositionLayerBaseHeader*
+XRFW_API const XrCompositionLayerBaseHeader*
 xrfwBeginFrame(XrTime* outtime, XrfwViewMatrices* viewMatrix);
 XRFW_API XrBool32
 xrfwEndFrame(const XrCompositionLayerBaseHeader* const* layers,
@@ -103,18 +103,20 @@ xrfwSession(T& platform,
       XrTime frameTime;
       XrfwViewMatrices viewMatrix;
       if (auto projectionLayer = xrfwBeginFrame(&frameTime, &viewMatrix)) {
+        const XrCompositionLayerBaseHeader* layers[2] = { projectionLayer,
+                                                          nullptr };
         if (use_vrpt) {
           if (auto swapchainImage =
                 xrfwAcquireSwapchain(swapchains.leftOrVrpt)) {
-            render(frameTime,
-                   swapchainImage,
-                   nullptr,
-                   swapchains,
-                   viewMatrix.leftProjection,
-                   viewMatrix.leftView,
-                   viewMatrix.rightProjection,
-                   viewMatrix.rightView,
-                   user);
+            layers[1] = render(frameTime,
+                               swapchainImage,
+                               nullptr,
+                               swapchains,
+                               viewMatrix.leftProjection,
+                               viewMatrix.leftView,
+                               viewMatrix.rightProjection,
+                               viewMatrix.rightView,
+                               user);
             xrfwReleaseSwapchain(swapchains.leftOrVrpt);
           }
         } else {
@@ -122,21 +124,21 @@ xrfwSession(T& platform,
                 xrfwAcquireSwapchain(swapchains.leftOrVrpt)) {
             if (auto rightSwapchainImage =
                   xrfwAcquireSwapchain(swapchains.right)) {
-              render(frameTime,
-                     leftSwapchainImage,
-                     rightSwapchainImage,
-                     swapchains,
-                     viewMatrix.leftProjection,
-                     viewMatrix.leftView,
-                     viewMatrix.rightProjection,
-                     viewMatrix.rightView,
-                     user);
+              layers[1] = render(frameTime,
+                                 leftSwapchainImage,
+                                 rightSwapchainImage,
+                                 swapchains,
+                                 viewMatrix.leftProjection,
+                                 viewMatrix.leftView,
+                                 viewMatrix.rightProjection,
+                                 viewMatrix.rightView,
+                                 user);
               xrfwReleaseSwapchain(swapchains.right);
             }
             xrfwReleaseSwapchain(swapchains.leftOrVrpt);
           }
         }
-        xrfwEndFrame(&projectionLayer, 1);
+        xrfwEndFrame(layers, layers[1] ? 2 : 1);
         //   const XrCompositionLayerBaseHeader* layers[] = { (
         //     const XrCompositionLayerBaseHeader*)&g_projection };
         //   frameEndInfo = {

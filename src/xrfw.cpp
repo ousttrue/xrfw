@@ -713,7 +713,7 @@ poseToMatrix(XrMatrix4x4f* view, const XrPosef& pose)
   XrMatrix4x4f_InvertRigidBody(view, &toView);
 }
 
-XRFW_API XrCompositionLayerBaseHeader*
+XRFW_API const XrCompositionLayerBaseHeader*
 xrfwBeginFrame(XrTime* outtime, XrfwViewMatrices* viewMatrix)
 {
   XrFrameWaitInfo frameWaitInfo{ XR_TYPE_FRAME_WAIT_INFO };
