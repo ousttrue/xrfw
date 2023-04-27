@@ -19,6 +19,8 @@ struct Context
   {
   }
 
+  void UpdateSkeleton(std::span<const XrBodySkeletonJointFB> joints) {}
+
   void UpdateJoints(std::span<const XrBodyJointLocationFB> joints,
                     const DirectX::XMFLOAT4& color)
   {
@@ -53,7 +55,13 @@ struct Context
     // update
     m_instances.clear();
     auto space = xrfwAppSpace();
-    UpdateJoints(m_tracker->Update(time, space), { 1, 1, 1, 1 });
+    auto result = m_tracker->Update(time, space);
+    if (result.SkeletonUpdated) {
+      UpdateSkeleton(m_tracker->SkeletonJoints());
+    }
+    if (result.JointsIsActive) {
+      UpdateJoints(m_tracker->Joints(), { 1, 1, 1, 1 });
+    }
 
     // render
     m_d3d.Render(swapchainImage,

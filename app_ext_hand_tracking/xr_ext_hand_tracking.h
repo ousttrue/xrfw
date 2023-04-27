@@ -5,6 +5,7 @@
 #include <plog/Log.h>
 #include <span>
 #include <vector>
+#include <xrfw_proc.h>
 
 struct ExtHandTracking
 {
@@ -15,48 +16,14 @@ struct ExtHandTracking
     };
     return s_extensions;
   }
-  PFN_xrCreateHandTrackerEXT xrCreateHandTrackerEXT_ = nullptr;
-  PFN_xrDestroyHandTrackerEXT xrDestroyHandTrackerEXT_ = nullptr;
-  PFN_xrLocateHandJointsEXT xrLocateHandJointsEXT_ = nullptr;
+  XRFW_PROC(xrCreateHandTrackerEXT);
+  XRFW_PROC(xrDestroyHandTrackerEXT);
+  XRFW_PROC(xrLocateHandJointsEXT);
   ExtHandTracking(XrInstance instance, XrSystemId system)
+    : xrCreateHandTrackerEXT(instance)
+    , xrDestroyHandTrackerEXT(instance)
+    , xrLocateHandJointsEXT(instance)
   {
-    // Inspect hand tracking system properties
-    XrSystemHandTrackingPropertiesEXT handTrackingSystemProperties{
-      XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT
-    };
-    XrSystemProperties systemProperties{ XR_TYPE_SYSTEM_PROPERTIES,
-                                         &handTrackingSystemProperties };
-    if (XR_FAILED(xrGetSystemProperties(instance, system, &systemProperties))) {
-      PLOG_ERROR << "xrGetSystemProperties";
-    }
-    if (!handTrackingSystemProperties.supportsHandTracking) {
-      // The system does not support hand tracking
-      PLOG_ERROR << "xrGetSystemProperties "
-                    "XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT FAILED.";
-    } else {
-      PLOG_INFO << "xrGetSystemProperties "
-                   "XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT OK "
-                   "- initiallizing hand tracking...";
-    }
-
-    if (XR_FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrCreateHandTrackerEXT",
-          (PFN_xrVoidFunction*)(&xrCreateHandTrackerEXT_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrCreateHandTrackerEXT";
-    }
-    if (XR_FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrDestroyHandTrackerEXT",
-          (PFN_xrVoidFunction*)(&xrDestroyHandTrackerEXT_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrDestroyHandTrackerEXT_";
-    }
-    if (XR_FAILED(xrGetInstanceProcAddr(
-          instance,
-          "xrLocateHandJointsEXT",
-          (PFN_xrVoidFunction*)(&xrLocateHandJointsEXT_)))) {
-      PLOG_ERROR << "xrGetInstanceProcAddr: xrLocateHandJointsEXT_";
-    }
   }
 };
 
@@ -75,15 +42,15 @@ struct ExtHandTracker
       .hand = isLeft ? XR_HAND_LEFT_EXT : XR_HAND_RIGHT_EXT,
       .handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT,
     };
-    if (XR_FAILED(m_ext.xrCreateHandTrackerEXT_(
-          session, &createInfo, &m_tracker))) {
+    if (XR_FAILED(
+          m_ext.xrCreateHandTrackerEXT(session, &createInfo, &m_tracker))) {
       PLOG_ERROR << "xrCreateHandTrackerEXT";
     }
   }
 
   ~ExtHandTracker()
   {
-    if (XR_FAILED(m_ext.xrDestroyHandTrackerEXT_(m_tracker))) {
+    if (XR_FAILED(m_ext.xrDestroyHandTrackerEXT(m_tracker))) {
       PLOG_ERROR << "xrDestroyHandTrackerEXT_";
     }
   }
@@ -102,8 +69,8 @@ struct ExtHandTracker
       .baseSpace = space,
       .time = time,
     };
-    if (XR_FAILED(m_ext.xrLocateHandJointsEXT_(
-          m_tracker, &locateInfo, &m_locations))) {
+    if (XR_FAILED(
+          m_ext.xrLocateHandJointsEXT(m_tracker, &locateInfo, &m_locations))) {
       PLOG_ERROR << "xrLocateHandJointsEXT";
       return {};
     }
