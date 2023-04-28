@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/microsoft/Windows.UI.Composition-Win32-Samples.git
+revision = master
+depth = 1
+patch_directory = screencapture
+
+[provide]
+screencapture = screencapture_dep

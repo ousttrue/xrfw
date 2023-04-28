@@ -1,4 +1,5 @@
 #include "../app_ext_hand_tracking/xr_ext_hand_tracking.h"
+#include "desktop_capture.h"
 #include "xr_fb_paththrough.h"
 #include <cuber/dx/DxCubeStereoRenderer.h>
 #include <plog/Log.h>
@@ -8,6 +9,7 @@
 struct Context
 {
   static const int MAX_NUM_EYES = 2;
+  DesktopCapture m_capture;
 
   // d3d11
   winrt::com_ptr<ID3D11Device> m_device;
