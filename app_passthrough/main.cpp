@@ -2,9 +2,15 @@
 #include "desktop_capture.h"
 #include "xr_fb_paththrough.h"
 #include <cuber/dx/DxCubeStereoRenderer.h>
+#include <grapho/dx11/texture.h>
 #include <plog/Log.h>
 #include <xrfw.h>
 #include <xrfw_impl_win32_d3d11.h>
+
+struct rgba
+{
+  uint8_t x, y, z, w;
+};
 
 struct Context
 {
@@ -25,6 +31,8 @@ struct Context
   FBPassthrough m_passthrough;
   std::shared_ptr<FBPassthroughFeature> m_passthroughFeature;
 
+  std::shared_ptr<grapho::dx11::Texture> m_texture;
+
   Context(XrInstance instance,
           XrSystemId system,
           const winrt::com_ptr<ID3D11Device>& device)
@@ -34,6 +42,14 @@ struct Context
     , m_passthrough(instance, system)
   {
     m_device->GetImmediateContext(m_deviceContext.put());
+
+    static rgba pixels[4] = {
+      { 255, 0, 0, 255 },
+      { 0, 255, 0, 255 },
+      { 0, 0, 255, 255 },
+      { 255, 255, 255, 255 },
+    };
+    m_texture = grapho::dx11::Texture::Create(device, 2, 2, &pixels[0].x);
   }
 
   bool CreateDepth(UINT width, UINT height)
@@ -144,7 +160,8 @@ struct Context
 
       m_instances.push_back({});
       DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
-      m_instances.back().Color = { 1, 1, 1, 1 };
+      m_instances.back().PositiveFaceFlag = { 0, 1, 2, 0 };
+      m_instances.back().NegativeFaceFlag = { 3, 4, 5, 0 };
     }
     for (auto& joint : m_trackerR->Update(time, space)) {
       auto size = joint.radius * 2;
@@ -156,14 +173,21 @@ struct Context
 
       m_instances.push_back({});
       DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
-      m_instances.back().Color = { 1, 1, 1, 1 };
+      m_instances.back().PositiveFaceFlag = { 0, 1, 2, 0 };
+      m_instances.back().NegativeFaceFlag = { 3, 4, 5, 0 };
     }
 
-    // render
     SetRTV(xrfwCastTextureD3D11(swapchainImage),
            info.width,
            info.height,
            (DXGI_FORMAT)info.format);
+
+    // render
+    m_texture->Bind(m_deviceContext, 0);
+    m_texture->Bind(m_deviceContext, 1);
+    m_texture->Bind(m_deviceContext, 2);
+    m_texture->Bind(m_deviceContext, 3);
+
     graphics.Render(projection,
                     view,
                     rightProjection,

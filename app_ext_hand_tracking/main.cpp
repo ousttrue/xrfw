@@ -21,7 +21,8 @@ struct Context
   }
 
   void UpdateJoints(std::span<const XrHandJointLocationEXT> joints,
-                    const DirectX::XMFLOAT4& color)
+                    const DirectX::XMFLOAT4& positive,
+                    const DirectX::XMFLOAT4& negative)
   {
     const XrSpaceLocationFlags isValid =
       XR_SPACE_LOCATION_ORIENTATION_VALID_BIT |
@@ -38,7 +39,8 @@ struct Context
 
         m_instances.push_back({});
         DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
-        m_instances.back().Color = color;
+        m_instances.back().PositiveFaceFlag = positive;
+        m_instances.back().NegativeFaceFlag = negative;
       }
     }
   }
@@ -54,8 +56,8 @@ struct Context
     // update
     m_instances.clear();
     auto space = xrfwAppSpace();
-    UpdateJoints(m_trackerL->Update(time, space), { 1, 0, 0, 1 });
-    UpdateJoints(m_trackerR->Update(time, space), { 0, 0, 1, 1 });
+    UpdateJoints(m_trackerL->Update(time, space), { 0, 1, 2, 0 }, {3, 4, 5, 0});
+    UpdateJoints(m_trackerR->Update(time, space), { 0, 1, 2, 0 }, {3, 4, 5, 0});
 
     // render
     m_d3d.Render(swapchainImage,

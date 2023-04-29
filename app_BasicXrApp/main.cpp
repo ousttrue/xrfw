@@ -19,7 +19,8 @@ struct Cube
                                       DirectX::XMLoadFloat4(&Rotation),
                                       DirectX::XMLoadFloat3(&Translation));
     DirectX::XMStoreFloat4x4(&instance->Matrix, trs);
-    instance->Color = Color;
+    instance->PositiveFaceFlag = {0, 1, 2, 0};
+    instance->NegativeFaceFlag = {3, 4, 5, 0};
   }
 };
 

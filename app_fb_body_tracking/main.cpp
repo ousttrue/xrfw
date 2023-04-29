@@ -248,7 +248,8 @@ struct Context
       [this](const libvrm::gltf::Instance& instance) {
         m_instances.push_back({
           .Matrix = instance.Matrix,
-          .Color = { 1, 1, 1, 1 },
+          .PositiveFaceFlag = { 0, 1, 2, 0 },
+          .NegativeFaceFlag = { 3, 4, 5, 0 }
         });
       });
 
