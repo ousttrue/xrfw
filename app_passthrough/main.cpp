@@ -1,5 +1,6 @@
 #include "../app_ext_hand_tracking/xr_ext_hand_tracking.h"
 #include "desktop_capture.h"
+#include "dxgi_util.h"
 #include "xr_fb_paththrough.h"
 #include <cuber/dx/DxCubeStereoRenderer.h>
 #include <grapho/dx11/texture.h>
@@ -50,37 +51,69 @@ struct Context
     };
     m_cuber.UploadPallete();
 
-    // texture
-    auto handle = m_capture.CreateShared();
-    if (handle) {
-      winrt::com_ptr<ID3D11Resource> resource;
-      auto hr =
-        m_device->OpenSharedResource(handle, IID_PPV_ARGS(resource.put()));
-      if (SUCCEEDED(hr)) {
-        m_texture = resource.as<ID3D11Texture2D>();
-        if (m_texture) {
-          D3D11_TEXTURE2D_DESC desc;
-          m_texture->GetDesc(&desc);
+    // EnumOutput(m_device);
 
-          D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {
-            .Format = desc.Format,
-            .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
-            .Texture2D{
-              .MostDetailedMip = 0,
-              .MipLevels = desc.MipLevels,
-            },
-          };
-          hr = m_device->CreateShaderResourceView(
-            m_texture.get(), &srv_desc, m_shared.put());
-          if (FAILED(hr)) {
-            auto a = 0;
+    auto obj = m_device.as<IDXGIObject>();
+    winrt::com_ptr<IDXGIFactory1> factory;
+    winrt::com_ptr<IDXGIAdapter1> adapter;
+    obj->GetParent(IID_PPV_ARGS(adapter.put()));
+    // auto factory = m_device.as<IDXGIFactory1>();
+    // for (UINT adapterIndex = 0;
+    //      S_OK == factory->EnumAdapters1(adapterIndex, adapter.put());
+    //      ++adapterIndex) {
+    // DXGI_ADAPTER_DESC1 desc;
+    // adapter->GetDesc1(&desc);
+
+    winrt::com_ptr<IDXGIOutput> output;
+    for (UINT outputIndex = 0;
+         S_OK == adapter->EnumOutputs(outputIndex, output.put());
+         ++outputIndex, output.detach()) {
+
+      // DXGI_OUTPUT_DESC output_desc;
+      // output->GetDesc(&output_desc);
+      //
+      // PLOG_INFO << "output[" << outputIndex << "] " << output_desc.DeviceName
+      //           << " "
+      //           << (output_desc.DesktopCoordinates.right -
+      //               output_desc.DesktopCoordinates.left)
+      //           << ": "
+      //           << (output_desc.DesktopCoordinates.bottom -
+      //               output_desc.DesktopCoordinates.top);
+
+      // texture
+      auto handle = m_capture.Start(output);
+      if (handle) {
+        winrt::com_ptr<ID3D11Resource> resource;
+        auto hr =
+          m_device->OpenSharedResource(handle, IID_PPV_ARGS(resource.put()));
+        if (SUCCEEDED(hr)) {
+          m_texture = resource.as<ID3D11Texture2D>();
+          if (m_texture) {
+            D3D11_TEXTURE2D_DESC desc;
+            m_texture->GetDesc(&desc);
+
+            D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {
+              .Format = desc.Format,
+              .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
+              .Texture2D{
+                .MostDetailedMip = 0,
+                .MipLevels = desc.MipLevels,
+              },
+            };
+            hr = m_device->CreateShaderResourceView(
+              m_texture.get(), &srv_desc, m_shared.put());
+            if (FAILED(hr)) {
+              auto a = 0;
+            }
           }
         }
       }
     }
+    //   break;
+    // }
 
     D3D11_SAMPLER_DESC sampler_desc = {
-      .Filter = D3D11_FILTER_MIN_MAG_MIP_POINT,
+      .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
       .AddressU = D3D11_TEXTURE_ADDRESS_CLAMP,
       .AddressV = D3D11_TEXTURE_ADDRESS_CLAMP,
       .AddressW = D3D11_TEXTURE_ADDRESS_CLAMP,
@@ -155,8 +188,8 @@ struct Context
     m_device->CreateRenderTargetView(
       colorTexture, &renderTargetViewDesc, renderTargetView.put());
 
-    // Clear swapchain and depth buffer. NOTE: This will clear the entire render
-    // target view, not just the specified view.
+    // Clear swapchain and depth buffer. NOTE: This will clear the entire
+    // render target view, not just the specified view.
     constexpr DirectX::XMFLOAT4 renderTargetClearColor = {
       0.0f,
       0.0f,
@@ -213,8 +246,8 @@ struct Context
     // cube
     {
       m_instances.push_back({});
-      auto t = DirectX::XMMatrixTranslation(0, 1, -1);
-      auto s = DirectX::XMMatrixScaling(1.6f, 0.9f, 0.1f);
+      auto t = DirectX::XMMatrixTranslation(0, 1, -0.5f);
+      auto s = DirectX::XMMatrixScaling(0.80f, 0.45f, 0.1f);
       DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * t);
     }
     m_instances.back().PositiveFaceFlag = {
