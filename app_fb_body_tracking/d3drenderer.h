@@ -117,10 +117,10 @@ struct D3DRenderer
            info.height,
            (DXGI_FORMAT)info.format);
     m_cuber.Render(leftProjection,
-                   leftView,
-                   rightProjection,
-                   rightView,
-                   instances.data(),
-                   instances.size());
+                         leftView,
+                         rightProjection,
+                         rightView,
+                         instances.data(),
+                         instances.size());
   }
 };

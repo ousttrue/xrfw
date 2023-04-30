@@ -19,8 +19,8 @@ struct Cube
                                       DirectX::XMLoadFloat4(&Rotation),
                                       DirectX::XMLoadFloat3(&Translation));
     DirectX::XMStoreFloat4x4(&instance->Matrix, trs);
-    instance->PositiveFaceFlag = {0, 1, 2, 0};
-    instance->NegativeFaceFlag = {3, 4, 5, 0};
+    instance->PositiveFaceFlag = { 0, 1, 2, 0 };
+    instance->NegativeFaceFlag = { 3, 4, 5, 0 };
   }
 };
 
@@ -29,13 +29,13 @@ struct Context
   winrt::com_ptr<ID3D11Device> m_device;
   winrt::com_ptr<ID3D11DeviceContext> m_deviceContext;
 
-  cuber::dx11::DxCubeStereoRenderer graphics;
+  cuber::dx11::DxCubeStereoRenderer m_cuber;
   std::vector<Cube> visible_cubes;
   std::vector<cuber::Instance> instances;
 
   Context(const winrt::com_ptr<ID3D11Device>& device)
     : m_device(device)
-    , graphics(device)
+    , m_cuber(device)
   {
     m_device->GetImmediateContext(m_deviceContext.put());
   }
@@ -106,12 +106,12 @@ struct Context
                     info.width,
                     info.height,
                     (DXGI_FORMAT)info.format);
-    context->graphics.Render(projection,
-                             view,
-                             rightProjection,
-                             rightView,
-                             context->instances.data(),
-                             context->instances.size());
+    context->m_cuber.Render(projection,
+                                  view,
+                                  rightProjection,
+                                  rightView,
+                                  context->instances.data(),
+                                  context->instances.size());
 
     return nullptr;
   }

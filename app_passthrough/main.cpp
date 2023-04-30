@@ -7,10 +7,8 @@
 #include <xrfw.h>
 #include <xrfw_impl_win32_d3d11.h>
 
-struct rgba
-{
-  uint8_t x, y, z, w;
-};
+const auto TextureBind = 0;
+const auto PalleteIndex = 7;
 
 struct Context
 {
@@ -22,7 +20,7 @@ struct Context
   winrt::com_ptr<ID3D11DeviceContext> m_deviceContext;
   winrt::com_ptr<ID3D11Texture2D> m_depthStencil;
   winrt::com_ptr<ID3D11DepthStencilView> m_dsv;
-  cuber::dx11::DxCubeStereoRenderer graphics;
+  cuber::dx11::DxCubeStereoRenderer m_cuber;
   std::vector<cuber::Instance> m_instances;
 
   ExtHandTracking m_ext;
@@ -31,25 +29,63 @@ struct Context
   FBPassthrough m_passthrough;
   std::shared_ptr<FBPassthroughFeature> m_passthroughFeature;
 
-  std::shared_ptr<grapho::dx11::Texture> m_texture;
+  winrt::com_ptr<ID3D11Texture2D> m_texture;
+  winrt::com_ptr<ID3D11ShaderResourceView> m_shared;
+  winrt::com_ptr<ID3D11SamplerState> m_sampler;
 
   Context(XrInstance instance,
           XrSystemId system,
           const winrt::com_ptr<ID3D11Device>& device)
     : m_device(device)
-    , graphics(device)
+    , m_cuber(device)
     , m_ext(instance, system)
     , m_passthrough(instance, system)
   {
     m_device->GetImmediateContext(m_deviceContext.put());
 
-    static rgba pixels[4] = {
-      { 255, 0, 0, 255 },
-      { 0, 255, 0, 255 },
-      { 0, 0, 255, 255 },
-      { 255, 255, 255, 255 },
+    // pallete
+    m_cuber.Pallete.Colors[PalleteIndex] = { 1, 1, 1, 1 };
+    m_cuber.Pallete.Textures[PalleteIndex] = {
+      TextureBind, TextureBind, TextureBind, 0
     };
-    m_texture = grapho::dx11::Texture::Create(device, 2, 2, &pixels[0].x);
+    m_cuber.UploadPallete();
+
+    // texture
+    auto handle = m_capture.CreateShared();
+    if (handle) {
+      winrt::com_ptr<ID3D11Resource> resource;
+      auto hr =
+        m_device->OpenSharedResource(handle, IID_PPV_ARGS(resource.put()));
+      if (SUCCEEDED(hr)) {
+        m_texture = resource.as<ID3D11Texture2D>();
+        if (m_texture) {
+          D3D11_TEXTURE2D_DESC desc;
+          m_texture->GetDesc(&desc);
+
+          D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {
+            .Format = desc.Format,
+            .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
+            .Texture2D{
+              .MostDetailedMip = 0,
+              .MipLevels = desc.MipLevels,
+            },
+          };
+          hr = m_device->CreateShaderResourceView(
+            m_texture.get(), &srv_desc, m_shared.put());
+          if (FAILED(hr)) {
+            auto a = 0;
+          }
+        }
+      }
+    }
+
+    D3D11_SAMPLER_DESC sampler_desc = {
+      .Filter = D3D11_FILTER_MIN_MAG_MIP_POINT,
+      .AddressU = D3D11_TEXTURE_ADDRESS_CLAMP,
+      .AddressV = D3D11_TEXTURE_ADDRESS_CLAMP,
+      .AddressW = D3D11_TEXTURE_ADDRESS_CLAMP,
+    };
+    m_device->CreateSamplerState(&sampler_desc, m_sampler.put());
   }
 
   bool CreateDepth(UINT width, UINT height)
@@ -149,6 +185,7 @@ struct Context
   {
     // update
     m_instances.clear();
+
     auto space = xrfwAppSpace();
     for (auto& joint : m_trackerL->Update(time, space)) {
       auto size = joint.radius * 2;
@@ -173,23 +210,46 @@ struct Context
       DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
     }
 
+    // cube
+    {
+      m_instances.push_back({});
+      auto t = DirectX::XMMatrixTranslation(0, 1, -1);
+      auto s = DirectX::XMMatrixScaling(1.6f, 0.9f, 0.1f);
+      DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * t);
+    }
+    m_instances.back().PositiveFaceFlag = {
+      PalleteIndex, PalleteIndex, PalleteIndex, 0
+    };
+    m_instances.back().NegativeFaceFlag = {
+      PalleteIndex, PalleteIndex, PalleteIndex, 0
+    };
+
     SetRTV(xrfwCastTextureD3D11(swapchainImage),
            info.width,
            info.height,
            (DXGI_FORMAT)info.format);
 
     // render
-    m_texture->Bind(m_deviceContext, 0);
-    m_texture->Bind(m_deviceContext, 1);
-    m_texture->Bind(m_deviceContext, 2);
-    m_texture->Bind(m_deviceContext, 3);
+    ID3D11ShaderResourceView* srvs[] = {
+      m_shared.get(),
+      m_shared.get(),
+      m_shared.get(),
+    };
+    m_deviceContext->PSSetShaderResources(0, std::size(srvs), srvs);
 
-    graphics.Render(projection,
-                    view,
-                    rightProjection,
-                    rightView,
-                    m_instances.data(),
-                    m_instances.size());
+    ID3D11SamplerState* samplers[] = {
+      m_sampler.get(),
+      m_sampler.get(),
+      m_sampler.get(),
+    };
+    m_deviceContext->PSSetSamplers(0, std::size(samplers), samplers);
+
+    m_cuber.Render(projection,
+                   view,
+                   rightProjection,
+                   rightView,
+                   m_instances.data(),
+                   m_instances.size());
   }
 
   static const XrCompositionLayerBaseHeader* Render(

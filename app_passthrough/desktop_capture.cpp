@@ -1,5 +1,6 @@
 #include "desktop_capture.h"
 #include <d3d11_4.h>
+#include <grapho/dx11/texture.h>
 #include <inspectable.h>
 #include <windows.graphics.capture.h>
 #include <windows.graphics.capture.interop.h>
@@ -11,6 +12,17 @@
 #include <winrt/windows.graphics.directx.direct3d11.h>
 
 #include <ScreenCaptureforHWND/direct3d11.interop.h>
+
+struct rgba
+{
+  uint8_t x, y, z, w;
+};
+static rgba pixels[4] = {
+  { 255, 0, 0, 255 },
+  { 0, 255, 0, 255 },
+  { 0, 0, 255, 255 },
+  { 255, 255, 255, 255 },
+};
 
 struct DesktopCaptureImpl
 {
@@ -32,11 +44,17 @@ struct DesktopCaptureImpl
   {
     winrt::init_apartment(winrt::apartment_type::single_threaded);
 
+    UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+#if defined(_DEBUG)
+    // If the project is in a debug build, enable the debug layer.
+    creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
     // デバイス作成
     ::D3D11CreateDevice(nullptr,
                         D3D_DRIVER_TYPE_HARDWARE,
                         nullptr,
-                        D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                        creationFlags,
                         nullptr,
                         0,
                         D3D11_SDK_VERSION,
@@ -113,6 +131,29 @@ struct DesktopCaptureImpl
 
     // m_callback(surface.get(), size.Width, size.Height);
   }
+
+  std::shared_ptr<grapho::dx11::Texture> m_texture;
+
+  HANDLE CreateShared()
+  {
+    m_texture =
+      grapho::dx11::Texture::Create(m_device, 2, 2, &pixels[0].x, true);
+    auto resource = m_texture->Texture2D.as<IDXGIResource>();
+    if (!resource) {
+      return nullptr;
+    }
+    HANDLE handle;
+    auto hr = resource->GetSharedHandle(&handle);
+    if (FAILED(hr)) {
+      return nullptr;
+    }
+
+    winrt::com_ptr<ID3D11DeviceContext> context;
+    m_device->GetImmediateContext(context.put());
+    context->Flush();
+
+    return handle;
+  }
 };
 
 DesktopCapture::DesktopCapture()
@@ -123,4 +164,10 @@ DesktopCapture::DesktopCapture()
 DesktopCapture::~DesktopCapture()
 {
   delete m_impl;
+}
+
+HANDLE
+DesktopCapture::CreateShared()
+{
+  return m_impl->CreateShared();
 }
