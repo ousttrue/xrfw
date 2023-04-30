@@ -218,8 +218,7 @@ struct Context
     m_sender.SendSkeleton(m_ep, ++m_skeletonId, m_scene);
   }
 
-  void UpdateJoints(std::span<const XrBodyJointLocationFB> joints,
-                    const DirectX::XMFLOAT4& color)
+  void UpdateJoints(std::span<const XrBodyJointLocationFB> joints)
   {
     // update scene
     const XrSpaceLocationFlags isValid =
@@ -235,9 +234,6 @@ struct Context
           (const DirectX::XMFLOAT4*)&joint.pose.orientation));
         auto t = DirectX::XMMatrixTranslationFromVector(DirectX::XMLoadFloat3(
           (const DirectX::XMFLOAT3*)&joint.pose.position));
-        // m_instances.push_back({});
-        // DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
-        // m_instances.back().Color = color;
         node->SetWorldMatrix(r * t);
       }
     }
@@ -248,8 +244,6 @@ struct Context
       [this](const libvrm::gltf::Instance& instance) {
         m_instances.push_back({
           .Matrix = instance.Matrix,
-          .PositiveFaceFlag = { 0, 1, 2, 0 },
-          .NegativeFaceFlag = { 3, 4, 5, 0 }
         });
       });
 
@@ -274,7 +268,7 @@ struct Context
       UpdateSkeleton(m_tracker->SkeletonJoints());
     }
     if (result.JointsIsActive) {
-      UpdateJoints(m_tracker->Joints(), { 1, 1, 1, 1 });
+      UpdateJoints(m_tracker->Joints());
     }
 
     // render

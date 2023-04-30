@@ -160,8 +160,6 @@ struct Context
 
       m_instances.push_back({});
       DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
-      m_instances.back().PositiveFaceFlag = { 0, 1, 2, 0 };
-      m_instances.back().NegativeFaceFlag = { 3, 4, 5, 0 };
     }
     for (auto& joint : m_trackerR->Update(time, space)) {
       auto size = joint.radius * 2;
@@ -173,8 +171,6 @@ struct Context
 
       m_instances.push_back({});
       DirectX::XMStoreFloat4x4(&m_instances.back().Matrix, s * r * t);
-      m_instances.back().PositiveFaceFlag = { 0, 1, 2, 0 };
-      m_instances.back().NegativeFaceFlag = { 3, 4, 5, 0 };
     }
 
     SetRTV(xrfwCastTextureD3D11(swapchainImage),

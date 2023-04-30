@@ -56,8 +56,8 @@ struct Context
     // update
     m_instances.clear();
     auto space = xrfwAppSpace();
-    UpdateJoints(m_trackerL->Update(time, space), { 0, 1, 2, 0 }, {3, 4, 5, 0});
-    UpdateJoints(m_trackerR->Update(time, space), { 0, 1, 2, 0 }, {3, 4, 5, 0});
+    UpdateJoints(m_trackerL->Update(time, space), { 1, 2, 3, 0 }, {4, 5, 6, 0});
+    UpdateJoints(m_trackerR->Update(time, space), { 1, 2, 3, 0 }, {4, 5, 6, 0});
 
     // render
     m_d3d.Render(swapchainImage,
