@@ -1,0 +1,31 @@
+.{
+    .name = "xrfw",
+    .version = "0.0.0",
+    .dependencies = .{
+        .openxr = .{
+            .url = "git+https://github.com/KhronosGroup/OpenXR-SDK#7d1c0961351bac61fd7bb72d402649d5ac3f2935",
+            .hash = "12204e07b8c31a913f6e347092a3027ad5b5bd1b648cfe5b2263d284cd2135c8142e",
+        },
+        .glew = .{
+            .url = "https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0-win32.zip",
+            .hash = "1220ca360d1ca838f9e6f9530d29b7b95fe9c66f57f75eb59332e36e6394833bdbc6",
+        },
+        .glm = .{
+            .url = "git+https://github.com/g-truc/glm.git#33b4a621a697a305bc3a7610d290677b96beb181",
+            .hash = "1220139c55feda70530946be3c8450182544907c2f4546fcc2cb7f3d4eb710d59e1c",
+        },
+        .plog = .{
+            .url = "git+https://github.com/SergiusTheBest/plog.git#85a871b13be0bd1a9e0110744fa60cc9bd1e8380",
+            .hash = "12207c91b20d4eda58553eea07b889b5597b66f601dc7d162f8df363c41f14a97806",
+        },
+        .glfw = .{
+            .url = "https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.zip",
+            .hash = "1220625fa7ce79733c6889844cb02ea1f6e4b81b46a3fabacec181714879947f4abd",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

@@ -8,10 +8,14 @@
 #include <vector>
 
 #ifdef XR_USE_PLATFORM_WIN32
+#ifdef XRFW_STATIC
+#define XRFW_API
+#else
 #ifdef XRFW_BUILD
 #define XRFW_API extern "C" __declspec(dllexport)
 #else
 #define XRFW_API extern "C" __declspec(dllimport)
+#endif
 #endif
 #else
 #define XRFW_API

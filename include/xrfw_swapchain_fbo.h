@@ -2,7 +2,7 @@
 #ifdef XR_USE_PLATFORM_ANDROID
 #include <GLES3/gl32.h>
 #elif XR_USE_PLATFORM_WIN32
-#include <gl/glew.h>
+#include <GL/glew.h>
 #else
 error("no XR_USE")
 #endif

@@ -7,7 +7,7 @@
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_EXPOSE_NATIVE_WGL
-#include <Glfw/glfw3native.h>
+#include <GLFW/glfw3native.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>

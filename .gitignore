@@ -25,3 +25,7 @@ gradlew*
 local.properties
 .idea/
 
+Makefile
+.zig-cache
+zig-cache
+zig-out
