@@ -26,6 +26,12 @@ local.properties
 .idea/
 
 Makefile
+
+# zig
 .zig-cache
 zig-cache
 zig-out
+
+# clangd
+compile_commands.json
+.cache

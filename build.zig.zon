@@ -6,10 +6,6 @@
             .url = "git+https://github.com/KhronosGroup/OpenXR-SDK#7d1c0961351bac61fd7bb72d402649d5ac3f2935",
             .hash = "12204e07b8c31a913f6e347092a3027ad5b5bd1b648cfe5b2263d284cd2135c8142e",
         },
-        .glew = .{
-            .url = "https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0-win32.zip",
-            .hash = "1220ca360d1ca838f9e6f9530d29b7b95fe9c66f57f75eb59332e36e6394833bdbc6",
-        },
         .glm = .{
             .url = "git+https://github.com/g-truc/glm.git#33b4a621a697a305bc3a7610d290677b96beb181",
             .hash = "1220139c55feda70530946be3c8450182544907c2f4546fcc2cb7f3d4eb710d59e1c",
@@ -21,6 +17,14 @@
         .glfw = .{
             .url = "https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.zip",
             .hash = "1220625fa7ce79733c6889844cb02ea1f6e4b81b46a3fabacec181714879947f4abd",
+        },
+        .compile_commands = .{
+            .url = "git+https://github.com/the-argus/zig-compile-commands.git#34ffa4290ca4fc060168e8eca9574ff11002fb0b",
+            .hash = "12209264387a67972ccebb9ff53a08b2ee8519f5f9b93b9d400a144d849528136ead",
+        },
+        .glew = .{
+            .url = "git+https://github.com/edoren/glew.git#5b995cab14f97231b48bc86b447be5e23b899626",
+            .hash = "1220379fc1ecdd0bb15a0bbffc8b619fb071dae5a3de500ab5a4b1d73c7f4a627058",
         },
     },
     .paths = .{
