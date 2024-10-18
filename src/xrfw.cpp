@@ -131,7 +131,8 @@ xrfwCreateInstance(const char* const* extensionNames,
     .applicationVersion = 0,
     .engineName = "xrfw_engine",
     .engineVersion = 0,
-    .apiVersion = XR_CURRENT_API_VERSION,
+    // https://community.khronos.org/t/cant-get-openxr-to-initialize-tutorial-works/111176
+    .apiVersion = XR_API_VERSION_1_0,
   };
   if (pAppInfo) {
     appInfo = *pAppInfo;

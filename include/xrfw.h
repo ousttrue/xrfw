@@ -176,7 +176,7 @@ operator<<(std::ostream& os, XrResult value)
   if (XR_SUCCEEDED(xrResultToString(xrfwGetInstance(), value, buffer))) {
     os << std::string_view(buffer);
   } else {
-    os << value;
+    os << "XrResult: " << (int)value;
   }
   return os;
 }

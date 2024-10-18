@@ -3,8 +3,7 @@
     .version = "0.0.0",
     .dependencies = .{
         .openxr = .{
-            .url = "git+https://github.com/KhronosGroup/OpenXR-SDK#7d1c0961351bac61fd7bb72d402649d5ac3f2935",
-            .hash = "12204e07b8c31a913f6e347092a3027ad5b5bd1b648cfe5b2263d284cd2135c8142e",
+            .path = "../openxr",
         },
         .glm = .{
             .url = "git+https://github.com/g-truc/glm.git#33b4a621a697a305bc3a7610d290677b96beb181",
